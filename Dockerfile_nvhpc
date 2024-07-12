@@ -148,15 +148,23 @@ WORKDIR /app
 
 # BGW. 
 COPY ./bgw.tar.gz /app/
-COPY ./arch_nvhpc.mk /app/
-RUN tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw
+COPY ./arch_nvhpc_gpu.mk /app/
+COPY ./arch_nvhpc_cpu.mk /app/
+RUN tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw-cpu && tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw
 WORKDIR /app/bgw
 RUN source ~/.bashrc \
-&& cp ../arch_nvhpc.mk ./arch.mk \
+&& cp ../arch_nvhpc_gpu.mk ./arch.mk \
 && make all-flavors -j8 \
 && make install INSTDIR=/usr/local \
 && cd .. \
-&& rm -rf bgw bgw.tar.gz arch_nvhpc.mk
+&& rm -rf bgw bgw.tar.gz arch_nvhpc_gpu.mk
+WORKDIR /app/bgw-cpu
+RUN source ~/.bashrc \
+&& cp ../arch_nvhpc_cpu.mk ./arch.mk \
+&& make all-flavors -j8 \
+&& make install INSTDIR=/usr/local \
+&& cd .. \
+&& rm -rf arch_nvhpc_cpu.mk
 WORKDIR /app
 
 # PETSC. 
@@ -223,9 +231,9 @@ RUN source ~/.bashrc \
 && rm -rf mpi4py mpi4py.tar.gz
 WORKDIR /app
 
-# mpi4py. 
-RUN source ~/.bashrc \
-&& MPICC="mpicc" CC=nvc CFLAGS="-noswitcherror" pip3 install --force --no-cache-dir --no-binary=mpi4py mpi4py
+# # mpi4py. 
+# RUN source ~/.bashrc \
+# && MPICC="mpicc" CC=nvc CFLAGS="-noswitcherror" pip3 install --force --no-cache-dir --no-binary=mpi4py mpi4py
 
 # h5py. 
 COPY ./h5py.tar.gz /app/
@@ -283,6 +291,9 @@ RUN source ~/.bashrc \
 RUN source ~/.bashrc \
 && rm -rf $NVHPC_ROOT/cuda/lib64/stubs/libcuda.so.1 \
 && echo -e "export LIBCUDA_PATH=\$(find /usr/lib/wsl -name 'libcuda.so*' | head -n 1) \n if [ -n \"\$LIBCUDA_PATH\" ]; then ln -sf \$LIBCUDA_PATH \$NVHPC_ROOT/cuda/lib64/libcuda.so; fi \n" >> ~/.bashrc 
+
+# Post execs, libraries install steps. Here just copying some files. Could have done it earlier, but don't wanna compile again. 
+COPY ./kmesh.pl /usr/local/bin/
 
 # Finally set the working directory to home directory. 
 WORKDIR /app
