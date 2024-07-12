@@ -1,0 +1,19 @@
+services:
+  fp-nvhpc-linux-amd64-cc86:
+    image: krishnaa42342/fp:nvhpc_cc86
+    container_name: fp-nvhpc-cc86
+    network_mode: "host"
+    volumes:
+      - "./:/scratch"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+              count: all
+              driver: nvidia
+    environment:
+      DISPLAY: $DISPLAY
+    stdin_open: true
+    tty: true
+    
