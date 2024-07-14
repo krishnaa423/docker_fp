@@ -23,8 +23,8 @@ MATHFLAG  = -DUSESCALAPACK -DUNPACKED -DUSEFFTW3 -DHDF5 -DUSEELPA
 #DEBUGFLAG = -DDEBUG
 
 FCPP    = cpp -C -nostdinc
-F90free = mpiifx -xCORE-AVX512 -free -qopenmp -ip -no-ipo
-LINK    = mpiifx -xCORE-AVX512 -qopenmp -ip -no-ipo
+F90free = mpiifx -free -qopenmp -ip -no-ipo # -xCORE-AVX512 
+LINK    = mpiifx -qopenmp -ip -no-ipo
 # We need the -O2 to pass the testsuite.
 # FOPTS   = -O2 -fp-model source
 FOPTS   = -O3 -fp-model source
@@ -35,9 +35,9 @@ MOD_OPT = -module
 INCFLAG = -I
 
 C_PARAFLAG = -DPARA -DMPICH_IGNORE_CXX_SEEK
-CC_COMP = mpiicpx -xCORE-AVX512
-C_COMP  = mpiicx -xCORE-AVX512
-C_LINK  = mpiicpx -xCORE-AVX512
+CC_COMP = mpiicpx # -xCORE-AVX512
+C_COMP  = mpiicx # -xCORE-AVX512
+C_LINK  = mpiicpx # -xCORE-AVX512
 C_OPTS  = -O3 -ip -no-ipo -qopenmp
 C_DEBUGFLAG =
 

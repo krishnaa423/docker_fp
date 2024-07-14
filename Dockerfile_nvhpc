@@ -39,7 +39,8 @@ export CPATH=/usr/local/include:\$NVHPC_ROOT/compilers/include:\$NVHPC_ROOT/cuda
 export LIBRARY_PATH=/usr/local/lib:\$NVHPC_ROOT/compilers/lib:\$NVHPC_ROOT/cuda/lib64:\$NVHPC_ROOT/cuda/lib64/stubs:\$NVHPC_ROOT/math_libs/lib64:\$LIBRARY_PATH \n\
 export LD_LIBRARY_PATH=/usr/local/lib:\$NVHPC_ROOT/compilers/lib:\$NVHPC_ROOT/cuda/lib64:\$NVHPC_ROOT/cuda/lib64/stubs:\$NVHPC_ROOT/math_libs/lib64:\$LD_LIBRARY_PATH \n\
 " > ~/.bashrc 
-RUN source ~/.bashrc && ln -sf $NVHPC_ROOT/cuda/lib64/stubs/libcuda.so $NVHPC_ROOT/cuda/lib64/stubs/libcuda.so.1 
+RUN source ~/.bashrc \
+&& ln -sf $NVHPC_ROOT/cuda/lib64/stubs/libcuda.so $NVHPC_ROOT/cuda/lib64/libcuda.so.1 
 
 # MPICH
 COPY ./mpich.tar.gz /app/
@@ -98,7 +99,7 @@ RUN source ~/.bashrc \
 && CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=/usr/local --enable-openmp --enable-mpi --enable-single \
 && make -j8 && make install \
 && cd .. \
-&& rm -rf fftw3 fftw3.tar.gz
+&& rm -rf fftw3 fftw3.tar.gz 
 WORKDIR /app
 
 # #LibZ. 
@@ -150,7 +151,7 @@ WORKDIR /app
 COPY ./bgw.tar.gz /app/
 COPY ./arch_nvhpc_gpu.mk /app/
 COPY ./arch_nvhpc_cpu.mk /app/
-RUN tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw-cpu && tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw
+RUN tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw-cpu && tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw 
 WORKDIR /app/bgw
 RUN source ~/.bashrc \
 && cp ../arch_nvhpc_gpu.mk ./arch.mk \
@@ -162,9 +163,8 @@ WORKDIR /app/bgw-cpu
 RUN source ~/.bashrc \
 && cp ../arch_nvhpc_cpu.mk ./arch.mk \
 && make all-flavors -j8 \
-&& make install INSTDIR=/usr/local \
 && cd .. \
-&& rm -rf arch_nvhpc_cpu.mk
+&& rm -rf arch_nvhpc_cpu.mk 
 WORKDIR /app
 
 # PETSC. 
@@ -289,8 +289,14 @@ RUN source ~/.bashrc \
 # Remove the link to the stub and add code for accesing the actual libcuda.so library. 
 # Might have to modift to add links for actual libcuda.so in non WSL environments. 
 RUN source ~/.bashrc \
-&& rm -rf $NVHPC_ROOT/cuda/lib64/stubs/libcuda.so.1 \
-&& echo -e "export LIBCUDA_PATH=\$(find /usr/lib/wsl -name 'libcuda.so*' | head -n 1) \n if [ -n \"\$LIBCUDA_PATH\" ]; then ln -sf \$LIBCUDA_PATH \$NVHPC_ROOT/cuda/lib64/libcuda.so; fi \n" >> ~/.bashrc 
+&& echo -e "export LIBCUDA_PATH=\$(find /usr/lib/wsl -name 'libcuda.so*' | head -n 1) \n \
+if [ -n \"\$LIBCUDA_PATH\" ]; then \n \
+    export LIBCUDA_DIR=\$(find /usr/lib/wsl -name 'libcuda.so*' -exec dirname {} \; | head -n 1 ) \n \
+    export LIBRARY_PATH=\"\$LIBCUDA_DIR:\$LIBRARY_PATH\" \n \
+    export LD_LIBRARY_PATH=\"\$LIBCUDA_DIR:\$LD_LIBRARY_PATH\" \n \
+    # ln -sf \$LIBCUDA_PATH \$NVHPC_ROOT/cuda/lib64/libcuda.so.1; \n \
+    ln -sf \$LIBCUDA_PATH \$NVHPC_ROOT/cuda/lib64/stubs/libcuda.so; \n \
+fi \n" >> ~/.bashrc 
 
 # Post execs, libraries install steps. Here just copying some files. Could have done it earlier, but don't wanna compile again. 
 COPY ./kmesh.pl /usr/local/bin/

@@ -2,7 +2,7 @@
 #
 COMPFLAG  = -DNVHPC -DNVHPC_API -DNVIDIA_GPU
 PARAFLAG  = -DMPI  -DOMP
-MATHFLAG  = -DUSESCALAPACK -DUNPACKED -DUSEFFTW3 -DHDF5 -DOMP_TARGET -DOPENACC -DUSEELPA_GPU # -DUSEPRIMME # -DUSEELPA # 
+MATHFLAG  = -DUSESCALAPACK -DUNPACKED -DUSEFFTW3 -DHDF5 -DOPENACC -DUSEELPA_GPU # -DOMP_TARGET  # -DUSEELPA # -DUSEPRIMME
 # DEBUGFLAG = -DDEBUG -DNVTX
 #
 
@@ -39,7 +39,7 @@ HDF5_LDIR    =  /usr/local/lib
 HDF5LIB      =  $(HDF5_LDIR)/libhdf5hl_fortran.a \
                 $(HDF5_LDIR)/libhdf5_hl.a \
                 $(HDF5_LDIR)/libhdf5_fortran.a \
-                $(HDF5_LDIR)/libhdf5.a 
+                $(HDF5_LDIR)/libhdf5.a
 HDF5INCLUDE  = /usr/local/include/
 
 

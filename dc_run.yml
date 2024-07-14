@@ -5,6 +5,7 @@ services:
     network_mode: "host"
     volumes:
       - "./:/scratch"
+      - "/tmp/.X11-unix:/tmp/.X11-unix"
     deploy:
       resources:
         reservations:
@@ -22,6 +23,7 @@ services:
     network_mode: "host"
     volumes:
       - "./:/scratch"
+      - "/tmp/.X11-unix:/tmp/.X11-unix"
     deploy:
       resources:
         reservations:
@@ -39,6 +41,7 @@ services:
     network_mode: "host"
     volumes:
       - "./:/scratch"
+      - "/tmp/.X11-unix:/tmp/.X11-unix"
     deploy:
       resources:
         reservations:
@@ -56,6 +59,7 @@ services:
     network_mode: "host"
     volumes:
       - "./:/scratch"
+      - "/tmp/.X11-unix:/tmp/.X11-unix"
     deploy:
       resources:
         reservations:
