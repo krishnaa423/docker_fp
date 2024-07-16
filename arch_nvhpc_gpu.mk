@@ -11,8 +11,8 @@ NVCCOPT= -O3 -use_fast_math
 CUDALIB= -lcufft -lcublasLt -lcublas -lcudart -lcuda -lnvToolsExt
 
 FCPP    = /usr/bin/cpp  -C   -nostdinc   #  -C  -P  -E -ansi  -nostdinc  /usr/bin/cpp
-F90free = mpif90 -Mfree -acc -mp=multicore,gpu -gpu=cuda12.4,cc${CUDA_CC}  -cudalib=cublas,cufft -traceback -Minfo=all,mp,acc -gopt -traceback
-LINK    = mpif90        -acc -mp=multicore,gpu -gpu=cuda12.4,cc${CUDA_CC}  -cudalib=cublas,cufft -Minfo=mp,acc # -lnvToolsExt  
+F90free = mpif90 -Mfree -acc -mp=multicore,gpu -gpu=cuda${CUDA_VER},cc${CUDA_CC}  -cudalib=cublas,cufft -traceback -Minfo=all,mp,acc -gopt -traceback
+LINK    = mpif90        -acc -mp=multicore,gpu -gpu=cuda${CUDA_VER},cc${CUDA_CC}  -cudalib=cublas,cufft -Minfo=mp,acc # -lnvToolsExt  
 FOPTS   = -fast -Mfree -Mlarge_arrays
 FNOOPTS = $(FOPTS)
 MOD_OPT = -module  

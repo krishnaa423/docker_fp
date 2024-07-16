@@ -1,5 +1,5 @@
 services:
-  fp-nvhpc-linux-amd64-cc86:
+  fp-nvhpc-cc86-linux-amd64:
     image: krishnaa42342/fp:nvhpc_cc86
     build:
       context: ./
@@ -9,7 +9,7 @@ services:
         CUDA_CC: 86
       platforms:
         - linux/amd64
-  fp-nvhpc-linux-amd64-cc80:
+  fp-nvhpc-cc80-linux-amd64:
     image: krishnaa42342/fp:nvhpc_cc80
     build:
       context: ./
@@ -19,11 +19,11 @@ services:
         CUDA_CC: 80
       platforms:
         - linux/amd64
-  fp-nvhpc-linux-ppc64le-cc70:
-    image: krishnaa42342/fp:nvhpc
+  fp-nvhpc-cc70-linux-ppc64le:
+    image: krishnaa42342/fp:nvhpc_cc70
     build:
       context: ./
-      dockerfile: ./Dockerfile_nvhpc_cc70
+      dockerfile: ./Dockerfile_nvhpc_cc70_ppc64le
       args:
         PLATFORM: Linux-ppc64le
         CUDA_CC: 70

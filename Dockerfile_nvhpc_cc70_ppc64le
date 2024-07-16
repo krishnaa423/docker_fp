@@ -1,11 +1,11 @@
 FROM ubuntu:22.04
 
 # Dockerfile variables. 
-ARG PLATFORM="Linux-x86_64"
+ARG PLATFORM="Linux-ppc64le"
 # Set the compute capability for cuda. Also don't forget to set the same value in arch_nvhpc.mk too. 
 # You can figure out the compute capability value by running pgaccelinfo command in the cli. 
-ARG CUDA_CC="86"           
-ARG CUDA_VER="12.4"  
+ARG CUDA_CC="70"      
+ARG CUDA_VER="12.3"     
 # ARG PLATFORM="MacOSX-arm64"
 # ARG PLATFORM="Linux-ppc64le"
 
@@ -26,16 +26,16 @@ RUN apt update \
 
 # NVHPC. 
 RUN curl https://developer.download.nvidia.com/hpc-sdk/ubuntu/DEB-GPG-KEY-NVIDIA-HPC-SDK | gpg --dearmor -o /usr/share/keyrings/nvidia-hpcsdk-archive-keyring.gpg \
-&& echo 'deb [signed-by=/usr/share/keyrings/nvidia-hpcsdk-archive-keyring.gpg] https://developer.download.nvidia.com/hpc-sdk/ubuntu/amd64 /' | tee /etc/apt/sources.list.d/nvhpc.list \
+&& echo 'deb [signed-by=/usr/share/keyrings/nvidia-hpcsdk-archive-keyring.gpg] https://developer.download.nvidia.com/hpc-sdk/ubuntu/ppc64el /' | tee /etc/apt/sources.list.d/nvhpc.list \
 && apt-get update -y \
-&& apt-get install -y nvhpc-24-5
+&& apt-get install -y nvhpc-24-1
 
 # Add NVHPC environment to bashrc. Add a link to the stub. 
 RUN \
 echo -e "export NVARCH=`uname -s`_`uname -m` \n\
 export NVCOMPILERS=/opt/nvidia/hpc_sdk \n\
-export MANPATH=\$MANPATH:\$NVCOMPILERS/\$NVARCH/24.5/compilers/man \n\
-export NVHPC_ROOT=\$NVCOMPILERS/\$NVARCH/24.5 \n\
+export MANPATH=\$MANPATH:\$NVCOMPILERS/\$NVARCH/24.1/compilers/man \n\
+export NVHPC_ROOT=\$NVCOMPILERS/\$NVARCH/24.1 \n\
 export PATH=/usr/local/bin:\$NVHPC_ROOT/compilers/bin:\$NVHPC_ROOT/cuda/bin:\$PATH \n\
 export CPATH=/usr/local/include:\$NVHPC_ROOT/compilers/include:\$NVHPC_ROOT/cuda/include:\$NVHPC_ROOT/math_libs/include:\$CPATH \n\
 export LIBRARY_PATH=/usr/local/lib:\$NVHPC_ROOT/compilers/lib:\$NVHPC_ROOT/cuda/lib64:\$NVHPC_ROOT/cuda/lib64/stubs:\$NVHPC_ROOT/math_libs/lib64:\$LIBRARY_PATH \n\
@@ -134,7 +134,7 @@ RUN source ~/.bashrc \
 && git config --global --add safe.directory '*' 
 RUN source ~/.bashrc \
 && CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=/usr/local --with-hdf5=yes --with-scalapack=yes \
-     --with-cuda=$NVHPC_ROOT/cuda --with-cuda-cc=$CUDA_CC --with-cuda-runtime=$CUDA_VER
+     --with-cuda=$NVHPC_ROOT/cuda --with-cuda-cc=$CUDA_CC --with-cuda-runtime=${CUDA_VER}
 # Even if the make all fails first time, it seems to pick up and build correct second time, so will do that. 
 RUN source ~/.bashrc && make all -j8 || true && make all -j8 && make install \
 && cd .. \
@@ -276,8 +276,8 @@ RUN source ~/.bashrc \
 RUN source ~/.bashrc \
 && mamba install -y matplotlib
 
-RUN source ~/.bashrc \
-&& mamba install -y seaborn
+# RUN source ~/.bashrc \
+# && mamba install -y seaborn
 
 RUN source ~/.bashrc \
 && mamba install -y pyvista 
@@ -287,6 +287,9 @@ RUN source ~/.bashrc \
 
 RUN source ~/.bashrc \
 && mamba install -y ase
+
+RUN apt update \
+&& apt install libgl1-mesa-glx
 
 # Remove the link to the stub and add code for accesing the actual libcuda.so library. 
 # Might have to modift to add links for actual libcuda.so in non WSL environments. 
