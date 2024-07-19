@@ -79,7 +79,7 @@ RUN source ~/.bashrc \
     --with-cuda-path=$NVHPC_ROOT/cuda \
     --with-NVIDIA-GPU-compute-capability=sm_$CUDA_CC  \
     LDFLAGS="-L/usr/local/lib -L$NVHPC_ROOT/compilers/lib" \
-    LIBS="-lscalapack -llapack -lblas" \
+    LIBS="-lscalapack $NVHPC_ROOT/compilers/lib/liblapack.a $NVHPC_ROOT/compilers/lib/libblas.a -lstdc++ -lcudart" \
     CFLAGS="-O3 -fPIC" \
     --disable-sse \
     --disable-avx --disable-avx2 --disable-avx512 \
@@ -127,6 +127,8 @@ RUN source ~/.bashrc \
 WORKDIR /app
 
 # QE. 
+# TODO: supercond_iso.f90 and supercond_<something>iso.f90 bugs on perlmutter. Just need to modify the AIMAG() function in IF conditional for both.
+# TODO: Solution is to just change them create a new variable, and them save them as a zip file.
 COPY ./qe.tar.gz /app/
 RUN tar -xzvf qe.tar.gz && mv q-e q-e-cpu && tar -xzvf qe.tar.gz
 WORKDIR /app/q-e
@@ -170,6 +172,7 @@ RUN source ~/.bashrc \
 WORKDIR /app
 
 # PETSC. 
+# TODO: Perlmutter: Instead, we just install using mamba. 
 COPY ./petsc.tar.gz /app/
 RUN tar -xzvf petsc.tar.gz && mv petsc-3.21.3 petsc
 WORKDIR /app/petsc
@@ -181,6 +184,8 @@ RUN source ~/.bashrc \
 WORKDIR /app
 
 # SLEPC. 
+# TODO: Did not install on NERSC Perlmutter cluster, as errors were encountered. 
+# Instead, we just install using mamba. 
 COPY ./slepc.tar.gz /app/
 RUN tar -xzvf slepc.tar.gz && mv slepc-3.21.1 slepc
 WORKDIR /app/slepc
@@ -221,7 +226,7 @@ RUN source ~/.bashrc \
 && mamba install -y scipy
 
 RUN source ~/.bashrc \
-&& mamba install -y sympy 
+&& mamba install -y sympy clear
 
 # mpi4py. 
 COPY ./mpi4py.tar.gz /app/
@@ -249,6 +254,7 @@ WORKDIR /app
 
 
 # petsc4py. 
+# TODO: Perlmutter: Instead, we just install using mamba. 
 COPY ./petsc4py.tar.gz /app/
 RUN tar -xzvf petsc4py.tar.gz 
 WORKDIR /app/petsc4py
@@ -260,6 +266,7 @@ RUN source ~/.bashrc \
 WORKDIR /app
 
 # slepc4py. 
+# TODO: Perlmutter: Instead, we just install using mamba. 
 COPY ./slepc4py.tar.gz /app/
 RUN tar -xzvf slepc4py.tar.gz && mv slepc4py-3.21.1 slepc4py
 WORKDIR /app/slepc4py

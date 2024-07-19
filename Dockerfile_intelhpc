@@ -38,8 +38,13 @@ RUN tar -xzvf elpa.tar.gz && mv elpa-2024.03.001 elpa
 WORKDIR /app/elpa
 RUN source ~/.bashrc \
 && FC=mpiifx \
-CXX=mpiicpx \
-CC=mpiicx ./configure FCFLAGS="-O3 -fPIC" CFLAGS="-O3 -fPIC" \
+# Can skip the C++ compiler apparently. Atleast on TACC Frontera cluster. 
+# On Frontera had to also change locale info based on error pasted into chatgpt.
+# export LANG=en_US.utf-8
+# export LANGUAGE=en_US.utf-8
+# export LC_ALL=en_US.utf-8
+# CXX=mpiicpx \
+CC=mpiicx ./configure -prefix=/usr/local FCFLAGS="-O3 -fPIC" CFLAGS="-O3 -fPIC" \
 --enable-option-checking=fatal SCALAPACK_LDFLAGS="-L$MKLROOT/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_intelmpi_lp64 -lpthread " \
 SCALAPACK_FCFLAGS="-I$MKL_HOME/include/intel64/lp64" \
 --disable-sse --disable-avx --disable-avx2 --disable-avx512 --disable-shared \
@@ -117,6 +122,7 @@ RUN source ~/.bashrc \
 && mamba install -y sympy 
 
 # mpi4py. 
+# Frontera: Installing pip with --user option helped. Also --force-reinstall --no-cache-dir. 
 COPY ./mpi4py.tar.gz /app/
 RUN tar -xzvf mpi4py.tar.gz && mv mpi4py-3.1.6 mpi4py
 WORKDIR /app/mpi4py
@@ -143,6 +149,7 @@ WORKDIR /app/petsc
 RUN source ~/.bashrc \
 && conda deactivate \
 && ./configure --prefix=/usr/local --with-cc=mpiicx --with-cxx=mpiicpx --with-fc=mpiifx --with-python-exec=$HOME/miniconda/bin/python3 --with-petsc4py=1 \
+# Frontera: && ./configure --prefix=$SCRATCH --with-cc=mpicc --with-cxx=mpicxx --with-fc=mpif90 --with-python-exec=$SCRATCH/miniconda/bin/python3 --with-petsc4py=1 \
 && make all -j8 && make install \
 && cd .. \
 && rm -rf petsc petsc.tar.gz \
@@ -156,6 +163,7 @@ WORKDIR /app/slepc
 RUN source ~/.bashrc \
 && conda deactivate \
 && CC=mpiicx CXX=mpiicpx FC=mpiifx PETSC_DIR=/usr/local ./configure --prefix=/usr/local \
+# Frontera: && CC=mpicc CXX=mpicxx FC=mpif90 PETSC_DIR=$SCRATCH ./configure --prefix=$SCRATCH \
 && make SLEPC_DIR=/app/slepc PETSC_DIR=/usr/local -j8 && make SLEPC_DIR=/app/slepc PETSC_DIR=/usr/local install \
 && cd .. \
 && rm -rf slepc slepc.tar.gz
@@ -164,6 +172,7 @@ WORKDIR /app
 # slepc4py. 
 RUN source ~/.bashrc \
 && CC=mpiicx CXX=mpiicpx FC=mpiifx PETSC_DIR=/usr/local SLEPC_DIR=/usr/local pip3 install  -q --no-binary=slepc4py slepc4py 
+# && Frontera: CC=mpicc CXX=mpicxx FC=mpif90 PETSC_DIR=$SCRATCH SLEPC_DIR=$SCRATCH pip3 install --no-binary=slepc4py slepc4py 
 
 RUN source ~/.bashrc \
 && mamba install -y pyqt 

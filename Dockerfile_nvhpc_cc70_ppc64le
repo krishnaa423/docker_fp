@@ -79,9 +79,9 @@ RUN source ~/.bashrc \
     --with-cuda-path=$NVHPC_ROOT/cuda \
     --with-NVIDIA-GPU-compute-capability=sm_$CUDA_CC  \
     LDFLAGS="-L/usr/local/lib -L$NVHPC_ROOT/compilers/lib" \
-    LIBS="-lscalapack -llapack -lblas" \
+    LIBS="/usr/local/lib/libscalapack.a $NVHPC_ROOT/compilers/lib/liblapack.a $NVHPC_ROOT/compilers/lib/libblas.a -lstdc++ -lcudart" \
     CFLAGS="-O3 -fPIC" \
-    --disable-sse \
+    --disable-sse --disable-sse-assembly \
     --disable-avx --disable-avx2 --disable-avx512 \
     --disable-shared \
 && make -j8 && make install \
@@ -120,13 +120,15 @@ COPY ./hdf5.tar.gz /app/
 RUN tar -xzvf hdf5.tar.gz && mv hdf5-1.14.4-2 hdf5
 WORKDIR /app/hdf5
 RUN source ~/.bashrc \
-&& CC=mpicc FC=mpif90 ./configure --prefix=/usr/local --enable-fortran --enable-shared --enable-parallel \
+&& CC=mpicc FC=mpif90 ./configure --prefix=/usr/local --enable-fortran --enable-shared --enable-parallel --disable-tests \
 && make -j8 && make install \
 && cd .. \
 && rm -rf hdf5 hdf5.tar.gz
 WORKDIR /app
 
 # QE. 
+# Serial build worked on OLCF Summit cluster. Parallel build caused problems, or just seemed to need many restarts. 
+# Also cloned from the git repository.
 COPY ./qe.tar.gz /app/
 RUN tar -xzvf qe.tar.gz && mv q-e q-e-cpu && tar -xzvf qe.tar.gz
 WORKDIR /app/q-e
@@ -134,7 +136,7 @@ RUN source ~/.bashrc \
 && git config --global --add safe.directory '*' 
 RUN source ~/.bashrc \
 && CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=/usr/local --with-hdf5=yes --with-scalapack=yes \
-     --with-cuda=$NVHPC_ROOT/cuda --with-cuda-cc=$CUDA_CC --with-cuda-runtime=${CUDA_VER}
+     --with-cuda=$NVHPC_ROOT/cuda --with-cuda-cc=$CUDA_CC --with-cuda-runtime=$CUDA_VER
 # Even if the make all fails first time, it seems to pick up and build correct second time, so will do that. 
 RUN source ~/.bashrc && make all -j8 || true && make all -j8 && make install \
 && cd .. \
@@ -151,22 +153,22 @@ WORKDIR /app
 
 # BGW. 
 COPY ./bgw.tar.gz /app/
-COPY ./arch_nvhpc_gpu.mk /app/
-COPY ./arch_nvhpc_cpu.mk /app/
+COPY ./arch_nvhpc_gpu_cc70_ppc64le.mk /app/
+COPY ./arch_nvhpc_cpu_cc70_ppc64le.mk /app/
 RUN tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw-cpu && tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw 
 WORKDIR /app/bgw
 RUN source ~/.bashrc \
-&& cp ../arch_nvhpc_gpu.mk ./arch.mk \
+&& cp ../arch_nvhpc_gpu_cc70_ppc64le.mk ./arch.mk \
 && make all-flavors -j8 \
 && make install INSTDIR=/usr/local \
 && cd .. \
-&& rm -rf bgw bgw.tar.gz arch_nvhpc_gpu.mk
+&& rm -rf bgw bgw.tar.gz arch_nvhpc_gpu_cc70_ppc64le.mk
 WORKDIR /app/bgw-cpu
 RUN source ~/.bashrc \
-&& cp ../arch_nvhpc_cpu.mk ./arch.mk \
+&& cp ../arch_nvhpc_cpu_cc70_ppc64le.mk ./arch.mk \
 && make all-flavors -j8 \
 && cd .. \
-&& rm -rf arch_nvhpc_cpu.mk 
+&& rm -rf arch_nvhpc_cpu_cc70_ppc64le.mk 
 WORKDIR /app
 
 # PETSC. 
@@ -238,6 +240,8 @@ WORKDIR /app
 # && MPICC="mpicc" CC=nvc CFLAGS="-noswitcherror" pip3 install --force --no-cache-dir --no-binary=mpi4py mpi4py
 
 # h5py. 
+# TODO: This did not work for Summit cluster. Meson build system gave some c11 error. 
+# For now, on summit, just installed h5py using mamba.
 COPY ./h5py.tar.gz /app/
 RUN tar -xzvf h5py.tar.gz 
 WORKDIR /app/h5py

@@ -68,6 +68,7 @@ HDF5LIB      =	$(HDF5PATH)/libhdf5hl_fortran.a \
 		$(HDF5PATH)/libhdf5_hl.a \
 		$(HDF5PATH)/libhdf5_fortran.a \
 		$(HDF5PATH)/libhdf5.a 
+# -lsz -lz -ldl
 HDF5INCLUDE  = /usr/local/include 
 
 ELPAINCLUDE=/usr/local/include

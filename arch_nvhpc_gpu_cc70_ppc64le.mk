@@ -10,7 +10,7 @@ NVCC=nvcc
 NVCCOPT= -O3 -use_fast_math
 CUDALIB= -lcufft -lcublasLt -lcublas -lcudart -lcuda -lnvToolsExt
 
-FCPP    = /usr/bin/cpp  -C   -nostdinc   #  -C  -P  -E -ansi  -nostdinc  /usr/bin/cpp
+FCPP    = /usr/bin/cpp  -P -ansi -nostdinc -C -E -std=c11   #  -C  -P  -E -ansi  -nostdinc  /usr/bin/cpp
 F90free = mpif90 -Mfree -acc -mp=multicore,gpu -gpu=cuda${CUDA_VER},cc${CUDA_CC}  -cudalib=cublas,cufft -traceback -Minfo=all,mp,acc -gopt -traceback
 LINK    = mpif90        -acc -mp=multicore,gpu -gpu=cuda${CUDA_VER},cc${CUDA_CC}  -cudalib=cublas,cufft -Minfo=mp,acc # -lnvToolsExt  
 FOPTS   = -fast -Mfree -Mlarge_arrays
@@ -39,7 +39,7 @@ HDF5_LDIR    =  /usr/local/lib
 HDF5LIB      =  $(HDF5_LDIR)/libhdf5hl_fortran.a \
                 $(HDF5_LDIR)/libhdf5_hl.a \
                 $(HDF5_LDIR)/libhdf5_fortran.a \
-                $(HDF5_LDIR)/libhdf5.a
+                $(HDF5_LDIR)/libhdf5.a 
                 # -lm -lz -ldl  -lstdc++
 HDF5INCLUDE  = /usr/local/include/
 

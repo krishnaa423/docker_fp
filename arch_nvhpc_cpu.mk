@@ -40,4 +40,5 @@ HDF5LIB      =  $(HDF5_LDIR)/libhdf5hl_fortran.a \
                 $(HDF5_LDIR)/libhdf5_hl.a \
                 $(HDF5_LDIR)/libhdf5_fortran.a \
                 $(HDF5_LDIR)/libhdf5.a 
+                # -lm -lz -ldl  -lstdc++
 HDF5INCLUDE  = /usr/local/include/
