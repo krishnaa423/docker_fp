@@ -1,5 +1,5 @@
 #!/bin/bash
 
-docker compose -f dc_run.yml up -d fp-mpich-linux-amd64
+docker compose -f dc_run.yml up -d fp-mpich-gpu-cc86-linux-amd64
 
-docker container exec -it fp-mpich /bin/bash
+docker container exec -it fp-mpich-gpu-cc86 /bin/bash

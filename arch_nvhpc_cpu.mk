@@ -27,18 +27,20 @@ C_DEBUGFLAG =
 
 REMOVE  = /bin/rm -f
 
-FFTW_DIR=/usr/local/lib
+FFTW_DIR=${SCRATCH_NVHPC_GPU}/lib
 FFTWLIB      = $(FFTW_DIR)/libfftw3_mpi.a $(FFTW_DIR)/libfftw3_omp.a $(FFTW_DIR)/libfftw3.a 
-FFTWINCLUDE  = /usr/local/include
+FFTWINCLUDE  = ${SCRATCH_NVHPC_GPU}/include
 PERFORMANCE  = 
 
-SCALAPACKLIB = /usr/local/lib/libscalapack.a
+SCALAPACKLIB = ${SCRATCH_NVHPC_GPU}/lib/libscalapack.a
 LAPACKLIB = ${NVHPC_ROOT}/compilers/lib/liblapack.a ${NVHPC_ROOT}/compilers/lib/libblas.a
+# LAPACKLIB = ${SCRATCH_NVHPC_GPU}/lib/libopenblas.a
 
-HDF5_LDIR    =  /usr/local/lib
+HDF5_LDIR    =  ${SCRATCH_NVHPC_GPU}/lib
 HDF5LIB      =  $(HDF5_LDIR)/libhdf5hl_fortran.a \
                 $(HDF5_LDIR)/libhdf5_hl.a \
                 $(HDF5_LDIR)/libhdf5_fortran.a \
-                $(HDF5_LDIR)/libhdf5.a 
+                $(HDF5_LDIR)/libhdf5.a \
+                -lz 
                 # -lm -lz -ldl  -lstdc++
-HDF5INCLUDE  = /usr/local/include/
+HDF5INCLUDE  = ${SCRATCH_NVHPC_GPU}/include/

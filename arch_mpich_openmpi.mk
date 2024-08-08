@@ -29,11 +29,11 @@ C_OPTS  = -O0 -g
 REMOVE  = /bin/rm -f
 
 # Math Libraries
-FFTWLIB      = /usr/local/lib/libfftw3_mpi.a /usr/local/lib/libfftw3_omp.a /usr/local/lib/libfftw3.a
-FFTWINCLUDE  = /usr/local/include 
-LAPACKLIB    = /usr/local/lib/libopenblas.a
-SCALAPACKLIB = /usr/local/lib/libscalapack.a
-HDF5LIB      = /usr/local/lib/libhdf5hl_fortran.a /usr/local/lib/libhdf5_hl.a /usr/local/lib/libhdf5_fortran.a /usr/local/lib/libhdf5.a 
-HDF5INCLUDE  = /usr/local/include
-ELPAINCLUDE  = /usr/local/include
-ELPALIB      = /usr/local/lib/libelpa.a
+FFTWLIB      = ${SCRATCH}/lib/libfftw3_mpi.a ${SCRATCH}/lib/libfftw3_omp.a ${SCRATCH}/lib/libfftw3.a
+FFTWINCLUDE  = ${SCRATCH}/include 
+LAPACKLIB    = ${SCRATCH}/lib/libopenblas.a
+SCALAPACKLIB = ${SCRATCH}/lib/libscalapack.a
+HDF5LIB      = ${SCRATCH}/lib/libhdf5hl_fortran.a ${SCRATCH}/lib/libhdf5_hl.a ${SCRATCH}/lib/libhdf5_fortran.a ${SCRATCH}/lib/libhdf5.a 
+HDF5INCLUDE  = ${SCRATCH}/include
+ELPAINCLUDE  = ${SCRATCH}/include
+ELPALIB      = ${SCRATCH}/lib/libelpa.a

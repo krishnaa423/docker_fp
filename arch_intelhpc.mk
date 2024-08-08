@@ -63,15 +63,15 @@ LAPACKLIB    = -Wl,--start-group \
 		-Wl,--end-group -liomp5 -lpthread -lm -ldl
 SCALAPACKLIB = $(MKLPATH)/libmkl_scalapack_lp64.a
 
-HDF5PATH     = /usr/local/lib
+HDF5PATH     = ${SCRATCH}/lib
 HDF5LIB      =	$(HDF5PATH)/libhdf5hl_fortran.a \
 		$(HDF5PATH)/libhdf5_hl.a \
 		$(HDF5PATH)/libhdf5_fortran.a \
 		$(HDF5PATH)/libhdf5.a 
 # -lsz -lz -ldl
-HDF5INCLUDE  = /usr/local/include 
+HDF5INCLUDE  = ${SCRATCH}/include 
 
-ELPAINCLUDE=/usr/local/include
-ELPALIB=/usr/local/lib/libelpa.a
+ELPAINCLUDE=${SCRATCH}/include
+ELPALIB=${SCRATCH}/lib/libelpa.a
 
 TESTSCRIPT = 

@@ -3,15 +3,18 @@ FROM ubuntu:22.04
 # Dockerfile variables. 
 ARG PLATFORM="Linux-x86_64"
 # Set the compute capability for cuda. Also don't forget to set the same value in arch_nvhpc.mk too. 
-# You can figure out the compute capability value by running pgaccelinfo command in the cli. 
-ARG CUDA_CC="86"           
+# You can figure out the compute capability value by running pgaccelinfo command in the cli.          
 # ARG PLATFORM="MacOSX-arm64"
 # ARG PLATFORM="Linux-ppc64le"
 
 # Shell. 
 ENV SHELL=/bin/bash
 ENV BASH_ENV=~/.bashrc
-ENV CUDA_CC=${CUDA_CC}
+ENV PLATFORM=${PLATFORM}
+ENV IHPC_ROOT="/opt/intel/oneapi"
+ENV MPI_IHPC_CPU_ROOT="/opt/intel/oneapi/mpi/latest"
+ENV SCRATCH="/usr/local"
+ENV APP="/app"
 SHELL ["/bin/bash", "-c"]
 
 # Working directory.
@@ -20,7 +23,8 @@ WORKDIR /app
 
 # apt requirements. 
 RUN apt update \
-&& apt install -y gpg gpg-agent wget curl build-essential libtool libtool-bin python3 git
+&& apt install -y gpg gpg-agent wget curl build-essential libtool libtool-bin python3 git \
+&& git config --global --add safe.directory '*'  
 
 # Intel HPC. 
 RUN wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null \
@@ -29,29 +33,36 @@ RUN wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRO
 && apt install -y intel-hpckit 
 
 # Add Intel HPC environment to bashrc. Add a link to the stub. 
-RUN echo -e "export IHPC_ROOT=/opt/intel/oneapi \n\
-if [ -z \"\$MKLROOT\" ]; then source \$IHPC_ROOT/setvars.sh; fi \n" > ~/.bashrc 
+RUN echo -e "if [ -z \"\$MKLROOT\" ]; then source \$IHPC_ROOT/setvars.sh; fi \n" > ~/.bashrc 
+
+# Update bashrc. 
+RUN echo -e "\n\
+export PATH=\"\$SCRATCH/bin:\$PATH\" \n\
+export CPATH=\"\$SCRATCH/include:\$CPATH\" \n\
+export LIBRARY_PATH=\"\$SCRATCH/lib:\$LIBRARY_PATH\" \n\
+export LD_LIBRARY_PATH=\"\$SCRATCH/lib:\$LD_LIBRARY_PATH\" \n\
+" >> ~/.bashrc 
 
 # # ELPA. 
 COPY ./elpa.tar.gz /app/
 RUN tar -xzvf elpa.tar.gz && mv elpa-2024.03.001 elpa
 WORKDIR /app/elpa
-RUN source ~/.bashrc \
-&& FC=mpiifx \
 # Can skip the C++ compiler apparently. Atleast on TACC Frontera cluster. 
 # On Frontera had to also change locale info based on error pasted into chatgpt.
 # export LANG=en_US.utf-8
 # export LANGUAGE=en_US.utf-8
 # export LC_ALL=en_US.utf-8
-# CXX=mpiicpx \
-CC=mpiicx ./configure -prefix=/usr/local FCFLAGS="-O3 -fPIC" CFLAGS="-O3 -fPIC" \
+RUN source ~/.bashrc \
+&& FC=mpiifx \
+CXX=mpiicpx \
+CC=mpiicx ./configure -prefix=$SCRATCH FCFLAGS="-O3 -fPIC" CFLAGS="-O3 -fPIC" \
 --enable-option-checking=fatal SCALAPACK_LDFLAGS="-L$MKLROOT/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_intelmpi_lp64 -lpthread " \
 SCALAPACK_FCFLAGS="-I$MKL_HOME/include/intel64/lp64" \
 --disable-sse --disable-avx --disable-avx2 --disable-avx512 --disable-shared \
 && make -j8 && make install \
 && cd .. \
 && rm -rf elpa elpa.tar.gz \
-&& cp -r /usr/local/include/elpa-2024.03.001/modules/* /usr/local/include/
+&& cp -r $SCRATCH/include/elpa-2024.03.001/modules/* $SCRATCH/include/
 WORKDIR /app
 
 # HDF5. 
@@ -59,7 +70,7 @@ COPY ./hdf5.tar.gz /app/
 RUN tar -xzvf hdf5.tar.gz && mv hdf5-1.14.4-2 hdf5
 WORKDIR /app/hdf5
 RUN source ~/.bashrc \
-&& CC=mpiicx FC=mpiifx ./configure --prefix=/usr/local --enable-fortran --enable-shared --enable-parallel \
+&& CC=mpiicx FC=mpiifx ./configure --prefix=$SCRATCH --enable-fortran --enable-shared --enable-parallel \
 && make -j8 && make install \
 && cd .. \
 && rm -rf hdf5 hdf5.tar.gz
@@ -70,9 +81,7 @@ COPY ./qe.tar.gz /app/
 RUN tar -xzvf qe.tar.gz
 WORKDIR /app/q-e
 RUN source ~/.bashrc \
-&& git config --global --add safe.directory '*' 
-RUN source ~/.bashrc \
-&& CC=mpiicx CXX=mpiicpx FC=mpiifx ./configure --prefix=/usr/local --with-hdf5=yes --with-scalapack=intel --with-elpa-include=/usr/local/include --with-elpa-lib=/usr/local/lib/libelpa.a
+&& CC=mpiicx CXX=mpiicpx FC=mpiifx ./configure --prefix=$SCRATCH --with-hdf5=yes --with-scalapack=intel --with-elpa-include=$SCRATCH/include --with-elpa-lib=$SCRATCH/lib/libelpa.a
 # Even if the make all fails first time, it seems to pick up and build correct second time, so will do that. 
 RUN source ~/.bashrc && make all -j8 || true && make all -j8 && make epw -j8 && make install \
 && cd .. \
@@ -87,7 +96,7 @@ WORKDIR /app/bgw
 RUN source ~/.bashrc \
 && cp ../arch_intelhpc.mk ./arch.mk \
 && make all-flavors -j8 \
-&& make install INSTDIR=/usr/local \
+&& make install INSTDIR=$SCRATCH \
 && cd .. \
 && rm -rf bgw bgw.tar.gz arch_intelhpc.mk
 WORKDIR /app
@@ -137,7 +146,7 @@ COPY ./h5py.tar.gz /app/
 RUN tar -xzvf h5py.tar.gz 
 WORKDIR /app/h5py
 RUN source ~/.bashrc \
-&& CC=mpiicx HDF5_MPI="ON" HDF5_DIR="/usr/local" pip3 install . \
+&& CC=mpiicx HDF5_MPI="ON" HDF5_DIR="$SCRATCH" pip3 install . \
 && cd .. \
 && rm -rf h5py h5py.tar.gz
 WORKDIR /app
@@ -148,12 +157,12 @@ RUN tar -xzvf petsc.tar.gz && mv petsc-3.21.3 petsc
 WORKDIR /app/petsc
 RUN source ~/.bashrc \
 && conda deactivate \
-&& ./configure --prefix=/usr/local --with-cc=mpiicx --with-cxx=mpiicpx --with-fc=mpiifx --with-python-exec=$HOME/miniconda/bin/python3 --with-petsc4py=1 \
+&& ./configure --prefix=$SCRATCH --with-cc=mpiicx --with-cxx=mpiicpx --with-fc=mpiifx --with-python-exec=$HOME/miniconda/bin/python3 --with-petsc4py=1 \
 # Frontera: && ./configure --prefix=$SCRATCH --with-cc=mpicc --with-cxx=mpicxx --with-fc=mpif90 --with-python-exec=$SCRATCH/miniconda/bin/python3 --with-petsc4py=1 \
 && make all -j8 && make install \
 && cd .. \
 && rm -rf petsc petsc.tar.gz \
-&& echo -e "export PYTHONPATH=\"/usr/local/lib:\$PYTHONPATH\" \n" >> ~/.bashrc 
+&& echo -e "export PYTHONPATH=\"$SCRATCH/lib:\$PYTHONPATH\" \n" >> ~/.bashrc 
 WORKDIR /app
 
 # SLEPC. 
@@ -162,16 +171,16 @@ RUN tar -xzvf slepc.tar.gz && mv slepc-3.21.1 slepc
 WORKDIR /app/slepc
 RUN source ~/.bashrc \
 && conda deactivate \
-&& CC=mpiicx CXX=mpiicpx FC=mpiifx PETSC_DIR=/usr/local ./configure --prefix=/usr/local \
+&& CC=mpiicx CXX=mpiicpx FC=mpiifx PETSC_DIR=$SCRATCH ./configure --prefix=$SCRATCH \
 # Frontera: && CC=mpicc CXX=mpicxx FC=mpif90 PETSC_DIR=$SCRATCH ./configure --prefix=$SCRATCH \
-&& make SLEPC_DIR=/app/slepc PETSC_DIR=/usr/local -j8 && make SLEPC_DIR=/app/slepc PETSC_DIR=/usr/local install \
+&& make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH -j8 && make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH install \
 && cd .. \
 && rm -rf slepc slepc.tar.gz
 WORKDIR /app
 
 # slepc4py. 
 RUN source ~/.bashrc \
-&& CC=mpiicx CXX=mpiicpx FC=mpiifx PETSC_DIR=/usr/local SLEPC_DIR=/usr/local pip3 install  -q --no-binary=slepc4py slepc4py 
+&& CC=mpiicx CXX=mpiicpx FC=mpiifx PETSC_DIR=$SCRATCH SLEPC_DIR=$SCRATCH pip3 install  -q --no-binary=slepc4py slepc4py 
 # && Frontera: CC=mpicc CXX=mpicxx FC=mpif90 PETSC_DIR=$SCRATCH SLEPC_DIR=$SCRATCH pip3 install --no-binary=slepc4py slepc4py 
 
 RUN source ~/.bashrc \
@@ -192,8 +201,24 @@ RUN source ~/.bashrc \
 RUN source ~/.bashrc \
 && mamba install -y ase
 
+RUN source ~/.bashrc \
+&& pip3 install -q dill 
+
+RUN source ~/.bashrc \
+&& pip3 install -q pyyaml
+
+# pytorch
+
+# torchvision
+
+# torch geometric
+
+# e3nn
+
+# gpaw 
+
 # Post execs, libraries install steps. Here just copying some files. Could have done it earlier, but don't wanna compile again. 
-COPY ./kmesh.pl /usr/local/bin/
+COPY ./kmesh.pl $SCRATCH/bin/
 
 # Finally set the working directory to home directory. 
 WORKDIR /app
