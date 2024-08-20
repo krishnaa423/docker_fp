@@ -163,7 +163,7 @@ RUN cd /app \
 && cd /app/hdf5 \
 && source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
 && CC=mpicc FC=mpif90 ./configure --prefix=$SCRATCH_NVHPC_GPU --enable-fortran --enable-shared --enable-parallel \
-# && --disable-tests \
+# --disable-tests \
 && make -j8 && make install \
 && cd .. \
 && rm -rf hdf5 hdf5.tar.gz \

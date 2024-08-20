@@ -317,6 +317,7 @@ RUN cd /app/pytorch \
 && export USE_MPI=1 \
 && export USE_CUDA=1 \
 # && export MAX_JOBS=8 \
+# && CUDNN_LIBRARY_PATH=$SCRATCH_GCC_GPU/lib CUDNN_INCLUDE_PATH=$SCRATCH_GCC_GPU/include CUSPARSELT_INCLUDE_PATH=$NVHPC_ROOT/math_libs/include CUSPARSELT_LIBRARY_PATH=$NVHPC_ROOT/math_libs/lib64 CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpic++ python3 setup.py develop \
 && export CMAKE_PREFIX_PATH='${CONDA_PREFIX:-"$(dirname $(which conda))/../"}' \
 && python3 setup.py develop \
 && python3 setup.py install \
@@ -390,7 +391,7 @@ RUN cd /app \
 && cd /app 
 
 # gpaw. 
-COPY ./gpaw.tar.gz ./siteconfig_gcc_gpu.py /app/ 
+COPY ./gpaw.tar.gz ./gpaw-data.tar.gz ./siteconfig_gcc_gpu.py /app/ 
 RUN cd /app \
 && tar -xvf gpaw.tar.gz && mv gpaw-24.6.0 gpaw \
 && cp /app/siteconfig_gcc_gpu.py /app/gpaw/siteconfig.py \
@@ -398,13 +399,16 @@ RUN cd /app \
 && cd /app/gpaw \
 && pip3 install . \
 && cd /app \
-&& rm -rf /app/gpaw /app/siteconfig_gcc_gpu.py /app/gpaw.tar.gz 
+# && gpaw install-data --tar-file /app/gpaw-data.tar.gz \
+# && rm -rf /app/gpaw /app/siteconfig_gcc_gpu.py /app/gpaw.tar.gz /app/gpaw-data.tar.gz \
+&& rm -rf /app/gpaw /app/siteconfig_gcc_gpu.py /app/gpaw.tar.gz \
+&& cd /app 
 
 # Other libraries after gpaw and pytorch. 
 # Probably need to install this in a seperate environment, as don't want to install mpich and other needed over it. 
 # RUN cd /app \
-# && source ~/.bashrc && source ~/set_gcc_gpu.sh \
-# && mamba install -y fenics-dolfinx 
+#&& source ~/.bashrc && source ~/set_gcc_gpu.sh \
+#&& mamba install -y <something> \
 
 
 # Add actual cuda libraries linking if needed. 

@@ -123,6 +123,26 @@ services:
       DISPLAY: $DISPLAY
     stdin_open: true
     tty: true
+  fp-abacus-linux-amd64:
+    image: krishnaa42342/fp:abacus
+    container_name: fp-abacus
+    # network_mode: "host"
+    # ports:
+    #   - "8888:8888"
+    volumes:
+      - "./:/scratch"
+      - "/tmp/.X11-unix:/tmp/.X11-unix"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+              count: all
+              driver: nvidia
+    environment:
+      DISPLAY: $DISPLAY
+    stdin_open: true
+    tty: true
 
 
 # networks:

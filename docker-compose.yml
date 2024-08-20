@@ -76,4 +76,11 @@ services:
         PLATFORM: Linux-x86_64
       platforms:
         - linux/amd64
+  fp-abacus-linux-amd64:
+    image: krishnaa42342/fp:abacus
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_abacus
+      platforms:
+        - linux/amd64
       
