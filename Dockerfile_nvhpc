@@ -174,8 +174,8 @@ RUN cd /app \
 # nvhpc gpu.
 COPY ./qe.tar.gz ./kmesh.pl ./qe_nvhpc_gpu_make.inc ./qe_nvhpc_cpu_make.inc /app/
 RUN cd /app \
-&& tar -xzvf qe.tar.gz && mv /app/q-e /app/qe \
-&& tar -xzvf qe.tar.gz && mv /app/q-e /app/qe-cpu \
+&& tar -xzvf qe.tar.gz && mv /app/qe-7.2 /app/qe \
+&& tar -xzvf qe.tar.gz && mv /app/qe-7.2 /app/qe-cpu \
 && cd /app/qe \
 && source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
 && CC=mpicc CXX=mpic++ FC=mpif90 ./configure \
@@ -279,6 +279,16 @@ RUN cd /app \
 && cd /app 
 
 # Install additional libraries if needed. 
+COPY ./bgw.tar.gz /app/
+RUN cd /app \
+&& source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw \
+&& cd /app/bgw/xctph \
+&& pip3 install . \
+# && pip3 install -q fp-workflow \
+&& cd /app \
+&& rm -rf bgw bgw.tar.gz \
+&& cd /app
 
 # Add actual cuda libraries linking if needed.  
 RUN echo -e "\n\

@@ -83,4 +83,11 @@ services:
       dockerfile: ./Dockerfile_abacus
       platforms:
         - linux/amd64
+  fp-testing:
+    image: krishnaa42342/fp:testing
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_testing
+      platforms:
+        - linux/amd64
       

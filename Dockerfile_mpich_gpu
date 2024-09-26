@@ -107,6 +107,7 @@ RUN cd /app \
 && tar -xzvf openblas.tar.gz && mv OpenBLAS-0.3.27 openblas \
 && cd /app/openblas \
 && source ~/.bashrc && source ~/set_gcc_gpu.sh \
+# In summit: make USE_OPENMP=1 COMMON_OPT="-fPIC" -j8. This is to use relocatable code. 
 && make USE_OPENMP=1 -j8 \
 && make install PREFIX=$SCRATCH_GCC_GPU \
 && cd .. \
@@ -145,6 +146,7 @@ RUN cd /app \
     LIBS="$SCRATCH_GCC_GPU/lib/libscalapack.a $SCRATCH_GCC_GPU/lib/libopenblas.a" \
     CFLAGS="-O3 -fPIC" \
     --disable-sse \
+    # --disable-sse-assembly \
     --disable-avx --disable-avx2 --disable-avx512 \
     --disable-shared \
 && make -j8 && make install \
@@ -176,6 +178,7 @@ RUN cd /app \
 && cd /app/hdf5 \
 && source ~/.bashrc && source ~/set_gcc_gpu.sh \
 && CC=mpicc FC=mpif90 ./configure --prefix=$SCRATCH_GCC_GPU --enable-fortran --enable-shared --enable-parallel \
+# --disable-tests \
 && make -j8 && make install \
 && cd .. \
 && rm -rf hdf5 hdf5.tar.gz \
@@ -312,6 +315,12 @@ RUN cd /app \
 && mamba install -y -c pytorch magma-cuda124 
 
 # Install pytorch. 
+# On summit, the following modules were preloaded:
+# module load gcc/11.2.0
+# module load cuda/11.7.1
+# module load magma/2.7.2-cuda117
+# Run: git clone --recursive https://github.com/pytorch/pytorch && cd pytorch
+# Then ran (in the pytorch folder): conda create -n pytorch-env python=3.11 && conda activate pytorch-env && conda install cmake ninja pyyaml typing_extensions numpy && python3 setup.py develop
 RUN cd /app/pytorch \ 
 && source ~/.bashrc && source ~/set_gcc_gpu.sh \
 && export USE_MPI=1 \
@@ -344,6 +353,7 @@ RUN cd /app \
 # e3nn.
 && cd /app \
 && pip3 install -q e3nn 
+# Summit: Installed torch_cluster using `git clone <torch_cluster>` and then ran `python3 setup.py install` in the folder directory. 
 
 # Libraries after pytorch and before gpaw. 
 COPY ./mpi4py.tar.gz ./h5py.tar.gz ./petsc4py.tar.gz ./slepc4py.tar.gz /app/
@@ -359,20 +369,24 @@ RUN cd /app \
 # mpi4py 
 && tar -xzvf mpi4py.tar.gz && mv mpi4py-3.1.6 mpi4py \
 && cd mpi4py \
+# For summit, an earlier version worked:  MPICC=mpicc CC=gcc $SCRATCH_GCC_GPU/miniconda/bin/pip3 install --force --no-cache-dir --no-binary=mpi4py mpi4py==3.1.6
 && MPICC=mpicc CC=gcc /root/miniconda/bin/pip3 install . \
 # && LD=/usr/bin/ld pip3 install . \
 && cd .. && rm -rf mpi4py.tar.gz mpi4py \
 # h5py
 && tar -xzvf h5py.tar.gz \
 && cd h5py \
+# For summit: CC=mpicc HDF5_MPI="ON" HDF5_DIR="$SCRATCH_GCC_GPU" $SCRATCH_GCC_GPU/miniconda/bin/pip3 install --no-deps --no-build-isolation h5py
 && CC=mpicc HDF5_MPI="ON" HDF5_DIR="$SCRATCH_GCC_GPU" /root/miniconda/bin/pip3 install . \
 && cd .. && rm -rf h5py.tar.gz h5py \
 # petsc4py
 && tar -xzvf petsc4py.tar.gz && mv petsc4py-3.21.4 petsc4py \
 && cd petsc4py \
+# For summit: CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH_GCC_GPU $SCRATCH_GCC_GPU/miniconda/bin/pip3 install --no-deps --no-build-isolation petsc4py
 && CC=mpicc CXX=mpic++ FC=mpif90 /root/miniconda/bin/pip3 install . \
 && cd .. && rm -rf petsc4py.tar.gz petsc4py \
 # slepc4py
+# For summit: CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH_GCC_GPU $SCRATCH_GCC_GPU/miniconda/bin/pip3 install --no-deps --no-build-isolation slepc4py
 && tar -xzvf slepc4py.tar.gz && mv slepc4py-3.21.1 slepc4py \
 && cd slepc4py \
 && CC=mpicc CXX=mpic++ FC=mpif90 SLEPC_DIR=$SCRATCH_GCC_GPU PETSC_DIR=$SCRATCH_GCC_GPU /root/miniconda/bin/pip3 install . \
@@ -385,7 +399,7 @@ RUN cd /app \
 && pip3 install -q pyvista[all] \
 && pip3 install -q pyvistaqt \
 && pip3 install -q jupyterlab \
-&& mamba install -y ase \
+&& mamba install -y ase \ 
 && mamba install -y dill \
 && mamba install -y pyyaml \
 && cd /app 

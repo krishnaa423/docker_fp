@@ -29,6 +29,7 @@ CDEFS         = -DAdd_
 FC            = mpif90
 CC            = mpicc 
 NOOPT         = -O0
+# -Wno-argument-mismatch seems to work instead of -fallow-argument-mismatch for gcc/11.4.0 on Summit IBM Power9 PCs. 
 FCFLAGS       = -O3 -fPIC -fallow-argument-mismatch
 CCFLAGS       = -O3 -fPIC
 FCLOADER      = $(FC)

@@ -10,6 +10,7 @@ NVCC=nvcc
 NVCCOPT= -O3 -use_fast_math
 CUDALIB= -lcufft -lcublasLt -lcublas -lcudart -lcuda -lnvToolsExt
 
+# For summit: FCPP    = /usr/bin/cpp  -P -ansi -nostdinc -C -E -std=c11   #  -C  -P  -E -ansi  -nostdinc  /usr/bin/cpp
 FCPP    = /usr/bin/cpp  -C   -nostdinc   #  -C  -P  -E -ansi  -nostdinc  /usr/bin/cpp
 F90free = mpif90 -Mfree -mp=multicore -traceback -Minfo=all,mp -gopt -traceback
 LINK    = mpif90        -mp=multicore -Minfo=mp # -lnvToolsExt  

@@ -2,7 +2,7 @@
 #
 COMPFLAG  = -DNVHPC -DNVHPC_API -DNVIDIA_GPU
 PARAFLAG  = -DMPI  -DOMP
-MATHFLAG  = -DUSESCALAPACK -DUNPACKED -DUSEFFTW3 -DHDF5 -DOPENACC -DUSEELPA_GPU # -DOMP_TARGET  # -DUSEELPA # -DUSEPRIMME
+MATHFLAG  = -DUSESCALAPACK -DUNPACKED -DUSEFFTW3 -DHDF5 -DOPENACC -DUSEELPA  -DUSEELPA_GPU # -DOMP_TARGET  # -DUSEELPA # -DUSEPRIMME
 # DEBUGFLAG = -DDEBUG -DNVTX
 #
 
@@ -10,9 +10,10 @@ NVCC=nvcc
 NVCCOPT= -O3 -use_fast_math
 CUDALIB= -lcufft -lcublasLt -lcublas -lcudart -lcuda -lnvToolsExt
 
+# For summit: FCPP    = /usr/bin/cpp  -P -ansi -nostdinc -C -E -std=c11   #  -C  -P  -E -ansi  -nostdinc  /usr/bin/cpp
 FCPP    = /usr/bin/cpp  -C   -nostdinc   #  -C  -P  -E -ansi  -nostdinc  /usr/bin/cpp
-F90free = mpif90 -Mfree -acc -mp=multicore,gpu -gpu=cuda${CUDA_VER},cc${CUDA_CC}  -cudalib=cublas,cufft -traceback -Minfo=all,mp,acc -gopt -traceback
-LINK    = mpif90        -acc -mp=multicore,gpu -gpu=cuda${CUDA_VER},cc${CUDA_CC}  -cudalib=cublas,cufft -Minfo=mp,acc # -lnvToolsExt  
+F90free = mpif90 -Mfree -acc -mp=multicore,gpu -gpu=cuda${CUDA_VER},cc${CUDA_CC}  -cudalib=cublas,cufft,cusolver -traceback -Minfo=all,mp,acc -gopt -traceback
+LINK    = mpif90        -acc -mp=multicore,gpu -gpu=cuda${CUDA_VER},cc${CUDA_CC}  -cudalib=cublas,cufft,cusolver -Minfo=mp,acc # -lnvToolsExt  
 FOPTS   = -fast -Mfree -Mlarge_arrays
 FNOOPTS = $(FOPTS)
 MOD_OPT = -module  
@@ -41,7 +42,7 @@ HDF5LIB      =  $(HDF5_LDIR)/libhdf5hl_fortran.a \
                 $(HDF5_LDIR)/libhdf5_hl.a \
                 $(HDF5_LDIR)/libhdf5_fortran.a \
                 $(HDF5_LDIR)/libhdf5.a \
-                -lz 
+                -lz -lstdc++
                 # -lm -lz -ldl  -lstdc++
 HDF5INCLUDE  = ${SCRATCH_NVHPC_GPU}/include/
 
