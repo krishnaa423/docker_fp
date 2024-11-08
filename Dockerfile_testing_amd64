@@ -73,7 +73,7 @@ RUN cd /app \
 && source ~/.bashrc \
 && tar -xzvf elpa.tar.gz && mv elpa-* elpa \
 && cd elpa \
-&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=/usr/local --disable-sse --disable-avx --disable-avx2 --disable-avx512 CFLAGS="-O3 -fPIC" LDFLAGS="-L/usr/local/lib" LIBS="-lscalapack -lopenblas" \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=/usr/local --disable-sse --disable-sse-assembly --disable-avx --disable-avx2 --disable-avx512 CFLAGS="-O3 -fPIC" LDFLAGS="-L/usr/local/lib" LIBS="-lscalapack -lopenblas" \
 && make -j8 && make install \
 && ln -sf /usr/local/include/elpa-*/elpa /usr/local/include/elpa \
 && cp /usr/local/include/elpa-*/modules/* /usr/local/include/ \
@@ -180,7 +180,10 @@ RUN cd /app \
 # miniconda
 RUN cd /app \
 && source ~/.bashrc \
+# Below for amd64 architectures. 
 && wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+# Below for macos arm64 architecture. 
+# && wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh \
 && chmod u+x *.sh \
 && ./miniconda.sh -b -p $HOME/miniconda \
 && $HOME/miniconda/bin/conda init \
@@ -193,6 +196,7 @@ RUN cd /app \
 
 # cmake, ninja, mkl-include, mkl-static, numpy, scipy, sympy, jax, pandas, pyqt, matplotlib, seaborn, ase, dolfinx. 
 # pyvista, pyvistaqt. 
+# MacOS: Commenting out mkl-static and mkl-include for arm64 architecture. 
 RUN cd /app \
 && source ~/.bashrc \
 && mamba install -y \
@@ -226,13 +230,16 @@ RUN cd /app \
 # torch
 # Frontera: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx CMAKE_CXX_FLAGS="-fstack-protector" MAX_JOBS=8 USE_MPI=1 USE_CUDA=0 USE_FBGEMM=0 BUILD_TEST=OFF python3 setup.py develop
 # Perlmutter: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx MAX_JOBS=16 USE_CUDA=1 USE_DISTRIBUTED=1 USE_MPI=1 USE_SYSTEM_NCCL=1 BUILD_TEST=0 USE_NNPACK=0 USE_QNNPACK=0 USE_PYTORCH_QNNPATCK=0 USE_XNNPACK=0 python3 setup.py develop
+# MacOS: MAX_JOBS=1 to reduce compilation resource usage. 
 RUN cd /app \
 && source ~/.bashrc \
-&& git clone --recursive https://github.com/pytorch/pytorch.git \
+&& git clone --recursive https://github.com/pytorch/pytorch.git 
+
+RUN cd /app \
 && cd pytorch \
 && pip3 install -r requirements.txt \
 && export CMAKE_PREFIX_PATH=/root/miniconda \
-&& USE_CUDA=0 USE_MPI=1 MAX_JOBS=4 python3 setup.py develop 
+&& USE_CUDA=0 USE_MPI=1 MAX_JOBS=3 python3 setup.py develop  
 
 # torchvision 
 # Perlmutter: CC=mpicc CXX=mpicxx MAX_JOBS=16 python3 setup.py install
@@ -262,7 +269,7 @@ RUN cd /app \
 && pip install torch_cluster \
 && pip3 install e3nn 
 
-# mpi4py, petsc4py, slepc4py
+# mpi4py, petsc4py, slepc4py, h5py. 
 RUN cd /app \
 && source ~/.bashrc \
 && git clone https://github.com/h5py/h5py.git \
@@ -292,6 +299,11 @@ RUN cd /app \
 && source ~/.bashrc \
 && pip3 install -q awscli
 
+# # Temporary instead of above pacakages. 
+# RUN cd /app \
+# && mamba install -y pytorch torchvision torchaudio cpuonly -c pytorch \
+# && pip3 install torch_geometric \
+# && mamba install -y hdf5 h5py 
 
 # Other packages
 RUN cd /app \
