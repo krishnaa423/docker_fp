@@ -162,7 +162,7 @@ RUN cd /app \
 && make all-flavors -j8 \
 && make install INSTDIR=/usr/local \
 && cd .. \
-&& rm -rf arch* 
+&& rm -rf arch* bgw.tar.gz bgw 
 
 # abacus 
 COPY ./abacus.tar.gz /app/
@@ -180,9 +180,6 @@ RUN cd /app \
 # miniconda
 RUN cd /app \
 && source ~/.bashrc \
-# Below for amd64 architectures. 
-# && wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-# Below for macos arm64 architecture. 
 && wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh \
 && chmod u+x *.sh \
 && ./miniconda.sh -b -p $HOME/miniconda \
@@ -194,97 +191,21 @@ RUN cd /app \
 && conda config --set channel_priority strict \
 && conda install -y mamba 
 
-# cmake, ninja, mkl-include, mkl-static, numpy, scipy, sympy, jax, pandas, pyqt, matplotlib, seaborn, ase, dolfinx. 
-# pyvista, pyvistaqt. 
-# MacOS: Commenting out mkl-static and mkl-include for arm64 architecture. 
+# Build essentials: cmake, ninja, cython, numpy.
 RUN cd /app \
 && source ~/.bashrc \
-&& mamba install -y \
-  cmake \
-  ninja \
-  # mkl-include \
-  # mkl-static \
-  numpy \
-  scipy \
-  pandas \
-  pyqt \
-  matplotlib \
-  seaborn \
-  dill \
-  pyyaml \
-  ase \
-  pymatgen \
-&& pip3 install -q \
-  networkx \
-  astropy \
-  pyvista \
-  pyvistaqt \
-  jupyterlab \
-  mp_api \
-&& cd bgw/xctph \
-&& pip install . \
-&& cd ../../ \
-&& rm -rf bgw 
+&& mamba install -y cmake \
+&& mamba install -y ninja \
+&& pip install -q cython 
 
-# Temporary instead of above pacakages. 
-RUN cd /app \
-&& mamba install -y pytorch torchvision torchaudio cpuonly -c pytorch \
-&& pip3 install torch_geometric 
-
-# # torch
-# # Frontera: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx CMAKE_CXX_FLAGS="-fstack-protector" MAX_JOBS=8 USE_MPI=1 USE_CUDA=0 USE_FBGEMM=0 BUILD_TEST=OFF python3 setup.py develop
-# # Perlmutter: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx MAX_JOBS=16 USE_CUDA=1 USE_DISTRIBUTED=1 USE_MPI=1 USE_SYSTEM_NCCL=1 BUILD_TEST=0 USE_NNPACK=0 USE_QNNPACK=0 USE_PYTORCH_QNNPATCK=0 USE_XNNPACK=0 python3 setup.py develop
-# # MacOS: MAX_JOBS=1 to reduce compilation resource usage. 
-# RUN cd /app \
-# && source ~/.bashrc \
-# && git clone --recursive https://github.com/pytorch/pytorch.git 
-
-# RUN cd /app \
-# && cd pytorch \
-# && pip3 install -r requirements.txt \
-# && export CMAKE_PREFIX_PATH=/root/miniconda \
-# && USE_CUDA=0 USE_MPI=1 MAX_JOBS=3 python3 setup.py develop  
-
-# # torchvision 
-# # Perlmutter: CC=mpicc CXX=mpicxx MAX_JOBS=16 python3 setup.py install
-# RUN cd /app \
-# && source ~/.bashrc \
-# && git clone https://github.com/pytorch/vision.git \
-# && cd vision \
-# && python3 setup.py install  \
-# && cd .. && rm -rf vision 
-
-# transformers, datasets, evaluate, accelerate
+# Parallel: numpy (prereq), mpi4py, petsc4py, slepc4py, h5py.
 RUN cd /app \
 && source ~/.bashrc \
-&& pip3 install -q transformers datasets accelerate evaluate 
-
-# # torch_geometric
-# RUN cd /app \
-# && source ~/.bashrc \
-# && pip install torch_geometric 
-
-# # pyg_lib
-# # torch_cluster
-# # e3nn
-# RUN cd /app \
-# && source ~/.bashrc \
-# # && pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.4.0+cpu.html \
-# && pip install torch_cluster \
-# && pip3 install e3nn 
-
-# mpi4py, petsc4py, slepc4py, h5py. 
-RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://github.com/h5py/h5py.git \
-&& conda deactivate \
-&& /root/miniconda/bin/pip3 install --upgrade cython \
-&& MPICC=mpicc CC=gcc /root/miniconda/bin/pip3 install --force --no-cache-dir --no-binary=mpi4py mpi4py==3.1.6 \
-&& cd h5py \
-&& CC=mpicc HDF5_MPI="ON" HDF5_DIR="/usr/local" /root/miniconda/bin/pip3 install . \
-&& cd .. && rm -rf h5py \
-&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=/usr/local /root/miniconda/bin/pip3 install --no-deps --no-build-isolation petsc4py \
-&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=/usr/local SLEPC_DIR=/usr/local /root/miniconda/bin/pip3 install --no-deps --no-build-isolation slepc4py 
+&& mamba install -y numpy \
+&& MPICC=mpicc CC=gcc pip3 install --no-binary=mpi4py mpi4py \
+&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=/usr/local pip3 install --no-deps --no-build-isolation petsc4py \
+&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=/usr/local SLEPC_DIR=/usr/local pip3 install --no-deps --no-build-isolation slepc4py \
+&& CC=mpicc HDF5_MPI="ON" HDF5_DIR="/usr/local"  pip3 install --no-binary=h5py h5py 
 
 # gpaw 
 COPY ./gpaw.tar.gz siteconfig_testing.py /app/
@@ -296,24 +217,107 @@ RUN cd /app \
 && cp ../siteconfig_testing.py ./siteconfig.py \
 && pip3 install . \
 && cd .. \
-&& rm -rf siteconfig* gpaw*
+&& rm -rf siteconfig* gpaw* \
+&& yes | gpaw install-data /root/gpaw-data
 
-# aws
+# # Serial pytorch.
+# RUN cd /app \
+# && pip3 install torch torchvision torchaudio \
+# && pip3 install torch_geometric 
+
+# torch
+# Frontera: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx CMAKE_CXX_FLAGS="-fstack-protector" MAX_JOBS=8 USE_MPI=1 USE_CUDA=0 USE_FBGEMM=0 BUILD_TEST=OFF python3 setup.py develop
+# Perlmutter: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx MAX_JOBS=16 USE_CUDA=1 USE_DISTRIBUTED=1 USE_MPI=1 USE_SYSTEM_NCCL=1 BUILD_TEST=0 USE_NNPACK=0 USE_QNNPACK=0 USE_PYTORCH_QNNPATCK=0 USE_XNNPACK=0 python3 setup.py develop
 RUN cd /app \
 && source ~/.bashrc \
-&& pip3 install -q awscli
+&& git clone --recursive https://github.com/pytorch/pytorch.git 
+RUN cd /app \
+&& cd pytorch \
+&& pip3 install -r requirements.txt \
+&& export CMAKE_PREFIX_PATH=/root/miniconda \
+&& USE_CUDA=0 USE_MPI=1 MAX_JOBS=2 python3 setup.py develop  
 
-# Other packages
+# torchvision 
+# Perlmutter: CC=mpicc CXX=mpicxx MAX_JOBS=16 python3 setup.py install
 RUN cd /app \
 && source ~/.bashrc \
-&& mamba install -y scikit-learn joblib xgboost \
-# && mamba create -n daskmpi-env python=3.12 dask-mpi \
-# && pip3 install -q jax spacy \
-# && python3 -m spacy download en_core_web_sm \
-&& pip3 install -q tensorboard torchserve torch-model-archiver \
-# && mamba create -y -n dolfinx-env python=3.12 fenics-dolfinx \
-&& conda install -y sqlite --force-reinstall \
-# && pip install PyOpenGL PyOpenGL_accelerate --no-build-isolation \
+&& git clone https://github.com/pytorch/vision.git \
+&& cd vision \
+&& MAX_JOBS=2 python3 setup.py install  \
+&& cd .. && rm -rf vision 
+
+# torch_geometric
+RUN cd /app \
+&& source ~/.bashrc \
+&& pip install torch_geometric 
+
+# pyg_lib, torch_cluster, e3nn.
+RUN cd /app \
+&& source ~/.bashrc \
+# && pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.4.0+cpu.html \
+&& pip install torch_cluster \
+&& pip3 install e3nn 
+
+# transformers, datasets, evaluate, accelerate
+RUN cd /app \
+&& source ~/.bashrc \
+&& pip3 install -q transformers datasets accelerate evaluate 
+
+# Tier 1 packages.
+RUN cd \app \
+&& source ~/.bashrc \
+&& pip3 install -q jax \
+&& mamba install -y scipy \
+&& mamba install -y sympy \
+&& mamba install -y pandas \
+&& pip3 install -q networkx \
+&& mamba install -y pyqt \
+&& mamba install -y vtk \
+&& mamba install -y matplotlib \
+&& mamba install -y seaborn \
+&& pip3 install -q pyvista[all] \
+&& pip3 install -q pyvistaqt \
+&& mamba install -y ase \
+&& mamba install -y pymatgen \
+&& pip3 install -q mp_api \
+&& pip3 install -q astropy \
+&& mamba install -y dill \
+&& mamba install -y pyyaml \
+&& pip3 install -q xmltodict \
+&& pip3 install -q jupyterlab 
+
+# Jupyer R support.
+RUN cd /app \
+&& source ~/.bashrc \
+&& apt update -y \
+&& DEBIAN_FRONTEND=noninteractive apt install -y r-base \
+&& Rscript -e "install.packages('IRkernel', repos='https://cloud.r-project.org/')" \
+&& Rscript -e "IRkernel::installspec(user = FALSE)"
+
+# Tier 2 packages.
+COPY ./xctph.tar.gz /app 
+RUN cd /app \
+&& source ~/.bashrc \
+&& pip3 install -q lark \
+&& mamba create -n daskmpi-env python=3.12 dask-mpi \
+&& mamba install -y scikit-learn \
+&& mamba install -y joblib \
+&& mamba install -y xgboost \
+&& pip3 install -q tensorboard \
+&& pip3 install -q torchserve torch-model-archiver \
+&& mamba create -n spacy-env python=3.7 spacy \
+&& conda activate spacy-env \
+&& python3 -m spacy download en_core_web_sm \
+&& conda deactivate \
+&& mamba create -y -n dolfinx-env python=3.12 fenics-dolfinx \
 && pip3 install -q fp-workflow \
-&& pip3 install lark \
-&& rm -rf bgw.tar.gz 
+&& tar -xzvf xctph.tar.gz && mv xctph-* xctph \
+&& cd xctph \
+&& pip3 install . --no-deps \
+&& cd .. \
+&& rm -rf xctph xctph.tar.gz \
+&& pip3 install -q --prefer-binary pyscf \
+# && pip install PyOpenGL PyOpenGL_accelerate --no-build-isolation \
+&& pip3 install -q awscli \
+# Fix sqlite errors.
+&& conda install -y sqlite --force-reinstall 
