@@ -1,0 +1,100 @@
+services:
+  fp-nvhpc-cc86-linux-amd64:
+    image: krishnaa42342/fp:nvhpc_cc86
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_nvhpc
+      args:
+        PLATFORM: Linux-x86_64
+        CUDA_CC: 86
+      platforms:
+        - linux/amd64
+  fp-nvhpc-cc80-linux-amd64:
+    image: krishnaa42342/fp:nvhpc_cc80
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_nvhpc
+      args:
+        PLATFORM: Linux-x86_64
+        CUDA_CC: 80
+      platforms:
+        - linux/amd64
+  fp-nvhpc-cc70-linux-ppc64le:
+    image: krishnaa42342/fp:nvhpc_cc70
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_nvhpc_cc70_ppc64le
+      args:
+        PLATFORM: Linux-ppc64le
+        CUDA_CC: 70
+      platforms:
+        - linux/ppc64le
+  fp-intelhpc-linux-amd64:
+    image: krishnaa42342/fp:intelhpc
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_intelhpc
+      args:
+        PLATFORM: Linux-x86_64
+      platforms:
+        - linux/amd64
+  fp-mpich-gpu-cc86-linux-amd64:
+    image: krishnaa42342/fp:mpich_gpu_cc86
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_mpich_gpu
+      args:
+        PLATFORM: Linux-x86_64
+        CUDA_CC: 86
+      platforms:
+        - linux/amd64
+  fp-mpich-gpu-cc80-linux-amd64:
+    image: krishnaa42342/fp:mpich_gpu_cc80
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_mpich_gpu
+      args:
+        PLATFORM: Linux-x86_64
+        CUDA_CC: 80
+      platforms:
+        - linux/amd64
+  fp-mpich-cpu-linux-amd64:
+    image: krishnaa42342/fp:mpich_cpu
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_mpich_cpu
+      args:
+        PLATFORM: Linux-x86_64
+      platforms:
+        - linux/amd64
+  fp-openmpi-cpu-linux-amd64:
+    image: krishnaa42342/fp:openmpi_cpu
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_openmpi_cpu
+      args:
+        PLATFORM: Linux-x86_64
+      platforms:
+        - linux/amd64
+  fp-abacus-linux-amd64:
+    image: krishnaa42342/fp:abacus
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_abacus
+      platforms:
+        - linux/amd64
+  fp-testing-arm64:
+    image: krishnaa42342/fp:testing-arm64
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_testing_arm64
+      platforms:
+        - linux/arm64
+  fp-testing-amd64:
+    image: krishnaa42342/fp:testing-amd64
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_testing_amd64
+      platforms:
+        - linux/amd64
+      

@@ -1,0 +1,374 @@
+FROM ubuntu:22.04
+
+# Dockerfile variables. 
+ARG PLATFORM="Linux-ppc64le"
+# Set the compute capability for cuda. Also don't forget to set the same value in arch_nvhpc.mk too. 
+# You can figure out the compute capability value by running pgaccelinfo command in the cli. 
+ARG CUDA_CC="70"      
+ARG CUDA_VER="12.3"     
+# ARG PLATFORM="MacOSX-arm64"
+# ARG PLATFORM="Linux-ppc64le"
+
+# Shell. 
+ENV SHELL=/bin/bash
+ENV BASH_ENV=~/.bashrc
+ENV CUDA_CC=${CUDA_CC}
+ENV CUDA_VER=${CUDA_VER}
+ENV PLATFORM=${PLATFORM}
+ENV MPI_NVHPC_GPU_ROOT="/opt/mpich_gpu_install_root"
+ENV MPI_GCC_GPU_ROOT="/opt/mpich_cpu_install_root"
+ENV SCRATCH="/usr/local"
+ENV APP="/app"
+SHELL ["/bin/bash", "-c"]
+
+# Working directory.
+RUN mkdir -p /app
+WORKDIR /app
+
+# apt requirements. 
+RUN apt update \
+&& apt install -y gpg wget curl build-essential libtool libtool-bin python3 git \
+&& git config --global --add safe.directory '*'  
+
+# NVHPC. 
+RUN curl https://developer.download.nvidia.com/hpc-sdk/ubuntu/DEB-GPG-KEY-NVIDIA-HPC-SDK | gpg --dearmor -o /usr/share/keyrings/nvidia-hpcsdk-archive-keyring.gpg \
+&& echo 'deb [signed-by=/usr/share/keyrings/nvidia-hpcsdk-archive-keyring.gpg] https://developer.download.nvidia.com/hpc-sdk/ubuntu/ppc64el /' | tee /etc/apt/sources.list.d/nvhpc.list \
+&& apt-get update -y \
+&& apt-get install -y nvhpc-24-1
+
+# Add NVHPC environment to bashrc. Add a link to the stub. 
+RUN \
+echo -e "\n\
+export CUDA_CC=${CUDA_CC} \n\
+export CUDA_VER=${CUDA_VER} \n\
+export PLATFORM=${PLATFORM} \n\
+export MPI_NVHPC_GPU_ROOT=${MPI_NVHPC_GPU_ROOT} \n\
+export MPI_GCC_GPU_ROOT=${MPI_GCC_GPU_ROOT} \n\
+export SCRATCH=${SCRATCH} \n\
+export APP=${APP} \n\
+export NVARCH=`uname -s`_`uname -m` \n\
+export NVCOMPILERS=/opt/nvidia/hpc_sdk \n\
+export MANPATH=\$MANPATH:\$NVCOMPILERS/\$NVARCH/24.1/compilers/man \n\
+export NVHPC_ROOT=\$NVCOMPILERS/\$NVARCH/24.1 \n\
+export PREVIOUS_PATH=\$PATH \n\
+export PREVIOUS_CPATH=\$CPATH \n\
+export PREVIOUS_LIBRARY_PATH=\$LIBRARY_PATH \n\
+export PREVIOUS_LD_LIBRARY_PATH=\$LD_LIBRARY_PATH \n\
+" > ~/.bashrc  
+RUN \
+echo -e "#!/bin/bash\n\
+export PATH=\$MPI_NVHPC_GPU_ROOT/bin:\$SCRATCH/bin:\$NVHPC_ROOT/compilers/bin:\$NVHPC_ROOT/cuda/bin:\$PREVIOUS_PATH \n\
+export CPATH=\$MPI_NVHPC_GPU_ROOT/include:\$SCRATCH/include:\$NVHPC_ROOT/compilers/include:\$NVHPC_ROOT/cuda/include:\$NVHPC_ROOT/math_libs/include:\$PREVIOUS_CPATH \n\
+export LIBRARY_PATH=\$MPI_NVHPC_GPU_ROOT/lib:\$SCRATCH/lib:\$NVHPC_ROOT/compilers/lib:\$NVHPC_ROOT/cuda/lib64:\$NVHPC_ROOT/cuda/lib64/stubs:\$NVHPC_ROOT/math_libs/lib64:\$PREVIOUS_LIBRARY_PATH \n\
+export LD_LIBRARY_PATH=\$MPI_NVHPC_GPU_ROOT/lib:\$SCRATCH/lib:\$NVHPC_ROOT/compilers/lib:\$NVHPC_ROOT/cuda/lib64:\$NVHPC_ROOT/cuda/lib64/stubs:\$NVHPC_ROOT/math_libs/lib64:\$PREVIOUS_LD_LIBRARY_PATH \n\
+" > ~/set_nvhpc_gpu.sh \
+&& chmod u+x ~/set_nvhpc_gpu.sh
+RUN \
+echo -e "#!/bin/bash\n\
+export PATH=\$MPI_GCC_GPU_ROOT/bin:\$SCRATCH/bin:\$NVHPC_ROOT/cuda/bin:\$PREVIOUS_PATH\n\
+export CPATH=\$MPI_GCC_GPU_ROOT/include:\$SCRATCH/include:\$NVHPC_ROOT/cuda/include:\$NVHPC_ROOT/math_libs/include:\$PREVIOUS_CPATH\n\
+export LIBRARY_PATH=\$MPI_GCC_GPU_ROOT/lib:\$SCRATCH/lib:\$NVHPC_ROOT/cuda/lib64:\$NVHPC_ROOT/math_libs/lib64:\$PREVIOUS_LIBRARY_PATH\n\
+export LD_LIBRARY_PATH=\$MPI_GCC_GPU_ROOT/lib:\$SCRATCH/lib:\$NVHPC_ROOT/cuda/lib64:\$NVHPC_ROOT/math_libs/lib64:\$PREVIOUS_LD_LIBRARY_PATH\n\
+" > ~/set_gcc_gpu.sh \
+&& chmod u+x ~/set_gcc_gpu.sh
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh && source ~/set_nvhpc_gpu.sh \
+&& ln -sf $NVHPC_ROOT/cuda/lib64/stubs/libcuda.so $NVHPC_ROOT/cuda/lib64/libcuda.so.1 
+
+# MPICH cpu
+COPY ./mpich.tar.gz /app/
+RUN tar -xzvf mpich.tar.gz && mv mpich-4.1.3 mpich
+WORKDIR /app/mpich
+RUN source ~/.bashrc && source ~/set_gcc_gpu.sh \
+&& mkdir -p $MPI_GCC_GPU_ROOT \
+&& CC=gcc CXX=g++ FC=gfortran ./configure --prefix=$MPI_GCC_GPU_ROOT  \
+&& make -j8 \
+&& make install \
+&& cd .. \
+&& rm -rf mpich mpich.tar.gz 
+WORKDIR /app
+
+# MPICH gpu
+COPY ./mpich.tar.gz /app/
+RUN tar -xzvf mpich.tar.gz && mv mpich-4.1.3 mpich
+WORKDIR /app/mpich
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& mkdir -p $MPI_NVHPC_GPU_ROOT \
+&& CC=nvc CXX=nvc++ FC=nvfortran ./configure --prefix=$MPI_NVHPC_GPU_ROOT --with-cuda=$NVHPC_ROOT/cuda  \
+&& make -j8 \
+&& make install \
+&& cd .. \
+&& rm -rf mpich mpich.tar.gz 
+WORKDIR /app
+
+
+# SCALAPACK. 
+COPY ./scalapack.tar.gz /app/
+RUN tar -xzvf scalapack.tar.gz && mv scalapack-2.2.0 scalapack
+WORKDIR /app/scalapack
+COPY ./SLmake.inc_nvhpc /app/scalapack/SLmake.inc
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& make lib \
+&& cp ./libscalapack.a $SCRATCH/lib/libscalapack.a \
+&& cd .. \
+&& rm -rf scalapack scalapack.tar.gz
+WORKDIR /app
+
+# ELPA. 
+COPY ./elpa.tar.gz /app/
+RUN tar -xzvf elpa.tar.gz && mv elpa-2024.03.001 elpa
+WORKDIR /app/elpa
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure \
+    --prefix=$SCRATCH \
+    --enable-nvidia-gpu-kernels \
+    --with-cuda-path=$NVHPC_ROOT/cuda \
+    --with-NVIDIA-GPU-compute-capability=sm_$CUDA_CC  \
+    LDFLAGS="-L$SCRATCH/lib -L$NVHPC_ROOT/compilers/lib" \
+    LIBS="$SCRATCH/lib/libscalapack.a $NVHPC_ROOT/compilers/lib/liblapack.a $NVHPC_ROOT/compilers/lib/libblas.a -lstdc++ -lcudart" \
+    CFLAGS="-O3 -fPIC" \
+    --disable-sse --disable-sse-assembly \
+    --disable-avx --disable-avx2 --disable-avx512 \
+    --disable-shared \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf elpa elpa.tar.gz \
+&& cp -r $SCRATCH/include/elpa-2024.03.001/modules/* $SCRATCH/include/
+WORKDIR /app
+
+
+# FFTW. 
+COPY ./fftw3.tar.gz /app/
+RUN tar -xzvf fftw3.tar.gz && mv fftw-3.3.10 fftw3
+WORKDIR /app/fftw3
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --enable-openmp --enable-mpi \
+&& make -j8 && make install \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --enable-openmp --enable-mpi --enable-single \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf fftw3 fftw3.tar.gz 
+WORKDIR /app
+
+# #LibZ. 
+# COPY ./zlib.tar.gz /app/
+# RUN tar -xzvf zlib.tar.gz && mv zlib-1.3.1 zlib
+# WORKDIR /app/zlib
+# RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+# && CC=nvc CXX=nvc++ FC=nvfortran CFLAGS="-fPIC" ./configure --prefix=$SCRATCH \
+# && make && make install \
+# && cd .. \
+# && rm -rf zlib zlib.tar.gz
+# WORKDIR /app
+
+# HDF5. 
+COPY ./hdf5.tar.gz /app/
+RUN tar -xzvf hdf5.tar.gz && mv hdf5-1.14.4-2 hdf5
+WORKDIR /app/hdf5
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& CC=mpicc FC=mpif90 ./configure --prefix=$SCRATCH --enable-fortran --enable-shared --enable-parallel --disable-tests \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf hdf5 hdf5.tar.gz
+WORKDIR /app
+
+# QE. 
+# Serial build worked on OLCF Summit cluster. Parallel build caused problems, or just seemed to need many restarts. 
+# Also cloned from the git repository.
+COPY ./qe.tar.gz /app/
+RUN tar -xzvf qe.tar.gz && mv q-e q-e-cpu && tar -xzvf qe.tar.gz
+WORKDIR /app/q-e
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --with-hdf5=yes --with-scalapack=yes \
+     --with-cuda=$NVHPC_ROOT/cuda --with-cuda-cc=$CUDA_CC --with-cuda-runtime=$CUDA_VER
+# Even if the make all fails first time, it seems to pick up and build correct second time, so will do that. 
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh && make all -j8 || true && make all -j8 && make install \
+&& cd .. \
+&& rm -rf q-e
+WORKDIR /app/q-e-cpu
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$(pwd) --with-hdf5=yes --with-scalapack=yes 
+# Even if the make all fails first time, it seems to pick up and build correct second time, so will do that. 
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh && make all -j8 || true && make all -j8 && make epw -j8 \
+&& cd .. \
+&& rm -rf qe.tar.gz
+WORKDIR /app
+
+# BGW. 
+COPY ./bgw.tar.gz /app/
+COPY ./arch_nvhpc_gpu_cc70_ppc64le.mk /app/
+COPY ./arch_nvhpc_cpu_cc70_ppc64le.mk /app/
+RUN tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw-cpu && tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw 
+WORKDIR /app/bgw
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& cp ../arch_nvhpc_gpu_cc70_ppc64le.mk ./arch.mk \
+&& make all-flavors -j8 \
+&& make install INSTDIR=$SCRATCH \
+&& cd .. \
+&& rm -rf bgw bgw.tar.gz arch_nvhpc_gpu_cc70_ppc64le.mk
+WORKDIR /app/bgw-cpu
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& cp ../arch_nvhpc_cpu_cc70_ppc64le.mk ./arch.mk \
+&& make all-flavors -j8 \
+&& cd .. \
+&& rm -rf arch_nvhpc_cpu_cc70_ppc64le.mk 
+WORKDIR /app
+
+# PETSC. 
+COPY ./petsc.tar.gz /app/
+RUN tar -xzvf petsc.tar.gz && mv petsc-3.21.3 petsc
+WORKDIR /app/petsc
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& ./configure --prefix=$SCRATCH \
+&& make all -j8 && make install \
+&& cd .. \
+&& rm -rf petsc petsc.tar.gz
+WORKDIR /app
+
+# SLEPC. 
+COPY ./slepc.tar.gz /app/
+RUN tar -xzvf slepc.tar.gz && mv slepc-3.21.1 slepc
+WORKDIR /app/slepc
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& ./configure --prefix=$SCRATCH \
+&& make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH -j8 && make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH install \
+&& cd .. \
+&& rm -rf slepc slepc.tar.gz
+WORKDIR /app
+
+
+# Miniconda.
+#packages: numpy, cupy, pandas, scipy, sympy, mpi4py (pip over local), h5py (pip over hdf5 local), petsc4py (pip over local), slepc4py (pip over local)
+# pyqt, matplotlib, seaborn, pyvista, pyvistaqt, ase. 
+
+# For silent installation. 
+RUN wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-${PLATFORM}.sh \
+&& chmod u+x ./miniconda.sh \
+&& ./miniconda.sh -b -p $HOME/miniconda \
+&& rm -rf ./miniconda.sh \
+&& $HOME/miniconda/bin/conda init
+
+# Configure conda-forge and mamba.
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \ 
+&& conda config --add channels conda-forge && conda config --set channel_priority strict \
+&& conda install -y mamba 
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& mamba install -y numpy
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& mamba install -y cupy
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& mamba install -y pandas
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& mamba install -y scipy
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& mamba install -y sympy 
+
+# mpi4py. 
+COPY ./mpi4py.tar.gz /app/
+RUN tar -xzvf mpi4py.tar.gz && mv mpi4py-3.1.6 mpi4py
+WORKDIR /app/mpi4py
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& MPICC=mpicc CC=nvc CFLAGS="-noswitcherror" pip3 install .  \
+&& cd .. \
+&& rm -rf mpi4py mpi4py.tar.gz
+WORKDIR /app
+
+# # mpi4py. 
+# RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+# && MPICC="mpicc" CC=nvc CFLAGS="-noswitcherror" pip3 install --force --no-cache-dir --no-binary=mpi4py mpi4py
+
+# h5py. 
+# TODO: This did not work for Summit cluster. Meson build system gave some c11 error. 
+# For now, on summit, just installed h5py using mamba.
+COPY ./h5py.tar.gz /app/
+RUN tar -xzvf h5py.tar.gz 
+WORKDIR /app/h5py
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& CC=mpicc CFLAGS="-noswitcherror" HDF5_MPI="ON" HDF5_DIR="$SCRATCH" pip3 install . \
+&& cd .. \
+&& rm -rf h5py h5py.tar.gz
+WORKDIR /app
+
+
+# petsc4py. 
+COPY ./petsc4py.tar.gz /app/
+RUN tar -xzvf petsc4py.tar.gz 
+WORKDIR /app/petsc4py
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& CC=mpicc CFLAGS=-noswitcherror CXX=mpic++ python3 setup.py build \
+&& python3 setup.py install \
+&& cd .. \
+&& rm -rf petsc4py petsc4py.tar.gz
+WORKDIR /app
+
+# slepc4py. 
+COPY ./slepc4py.tar.gz /app/
+RUN tar -xzvf slepc4py.tar.gz && mv slepc4py-3.21.1 slepc4py
+WORKDIR /app/slepc4py
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& CC=mpicc CFLAGS=-noswitcherror CXX=mpic++ python3 setup.py build \
+&& python3 setup.py install \
+&& cd .. \
+&& rm -rf slepc4py slepc4py.tar.gz
+WORKDIR /app
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& mamba install -y pyqt 
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& mamba install -y matplotlib
+
+# RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+# && mamba install -y seaborn
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& mamba install -y pyvista 
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& mamba install -y pyvistaqt
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& mamba install -y ase
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& pip3 install -q dill 
+
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& pip3 install -q pyyaml
+
+
+# cudnn.
+
+# pytorch
+
+# torchvision
+
+# torch geometric
+
+# e3nn
+
+# gpaw 
+
+# Remove the link to the stub and add code for accesing the actual libcuda.so library. 
+# Might have to modift to add links for actual libcuda.so in non WSL environments. 
+RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
+&& echo -e "export LIBCUDA_PATH=\$(find /usr/lib/wsl -name 'libcuda.so*' | head -n 1) \n \
+if [ -n \"\$LIBCUDA_PATH\" ]; then \n \
+    export LIBCUDA_DIR=\$(find /usr/lib/wsl -name 'libcuda.so*' -exec dirname {} \; | head -n 1 ) \n \
+    export LIBRARY_PATH=\"\$LIBCUDA_DIR:\$LIBRARY_PATH\" \n \
+    export LD_LIBRARY_PATH=\"\$LIBCUDA_DIR:\$LD_LIBRARY_PATH\" \n \
+    # ln -sf \$LIBCUDA_PATH \$NVHPC_ROOT/cuda/lib64/libcuda.so.1; \n \
+    ln -sf \$LIBCUDA_PATH \$NVHPC_ROOT/cuda/lib64/stubs/libcuda.so; \n \
+fi \n" >> ~/.bashrc 
+
+# Post execs, libraries install steps. Here just copying some files. Could have done it earlier, but don't wanna compile again. 
+COPY ./kmesh.pl $SCRATCH/bin/
+
+# Finally set the working directory to home directory. 
+WORKDIR /app
+
+CMD ["/bin/bash"]

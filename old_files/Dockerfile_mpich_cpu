@@ -1,0 +1,345 @@
+FROM ubuntu:22.04
+
+# Dockerfile variables. 
+ARG PLATFORM="Linux-x86_64"     
+# ARG PLATFORM="MacOSX-arm64"
+# ARG PLATFORM="Linux-ppc64le"
+
+# Shell. 
+ENV SHELL=/bin/bash
+ENV BASH_ENV=~/.bashrc
+ENV PLATFORM=${PLATFORM}
+ENV MPI_GCC_CPU_ROOT="/opt/openmpi_gcc_cpu_install_root"
+ENV SCRATCH="/usr/local"
+ENV APP="/app"
+SHELL ["/bin/bash", "-c"]
+
+# Working directory.
+RUN mkdir -p /app
+WORKDIR /app
+
+# apt requirements. 
+RUN apt update \
+&& apt install -y gpg wget curl build-essential gfortran libtool libtool-bin python3 git \
+&& git config --global --add safe.directory '*'  
+
+# Update bashrc. 
+RUN echo -e "\n\
+export PATH=\"\$MPI_GCC_CPU_ROOT/bin:\$SCRATCH/bin:\$PATH\" \n\
+export CPATH=\"\$MPI_GCC_CPU_ROOT/include:\$SCRATCH/include:\$CPATH\" \n\
+export LIBRARY_PATH=\"\$MPI_GCC_CPU_ROOT/lib:\$SCRATCH/lib:\$LIBRARY_PATH\" \n\
+export LD_LIBRARY_PATH=\"\$MPI_GCC_CPU_ROOT/lib:\$SCRATCH/lib:\$LD_LIBRARY_PATH\" \n\
+" > ~/.bashrc 
+
+# MPICH
+COPY ./mpich.tar.gz /app/
+RUN tar -xzvf mpich.tar.gz && mv mpich-4.1.3 mpich
+WORKDIR /app/mpich
+RUN source ~/.bashrc \
+&& mkdir -p $MPI_GCC_CPU_ROOT \
+&& CC=gcc CXX=g++ FC=gfortran ./configure --prefix=$MPI_GCC_CPU_ROOT  \
+&& make -j8 \
+&& make install \
+&& cd .. \
+&& rm -rf mpich mpich.tar.gz 
+WORKDIR /app
+
+# OpenBLAS. 
+COPY ./openblas.tar.gz /app/
+RUN tar -xzvf openblas.tar.gz && mv OpenBLAS-0.3.27 openblas
+WORKDIR /app/openblas
+RUN source ~/.bashrc \
+&& make USE_OPENMP=1 -j8 \
+&& make install PREFIX=$SCRATCH \
+&& cd .. \
+&& rm -rf openblas openblas.tar.gz
+WORKDIR /app
+
+
+# SCALAPACK. 
+COPY ./scalapack.tar.gz /app/
+RUN tar -xzvf scalapack.tar.gz && mv scalapack-2.2.0 scalapack
+WORKDIR /app/scalapack
+COPY ./SLmake.inc_mpich_openmpi /app/scalapack/SLmake.inc
+RUN source ~/.bashrc \
+&& make lib \
+&& cp ./libscalapack.a $SCRATCH/lib/libscalapack.a \
+&& cd .. \
+&& rm -rf scalapack scalapack.tar.gz
+WORKDIR /app
+
+# ELPA. 
+COPY ./elpa.tar.gz /app/
+RUN tar -xzvf elpa.tar.gz && mv elpa-2024.03.001 elpa
+WORKDIR /app/elpa
+RUN source ~/.bashrc \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure \
+    --prefix=$SCRATCH \
+    LDFLAGS="-L$SCRATCH/lib" \
+    LIBS="-lscalapack -lopenblas" \
+    CFLAGS="-O3 -fPIC" \
+    --disable-sse \
+    --disable-avx --disable-avx2 --disable-avx512 \
+    --disable-shared \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf elpa elpa.tar.gz \
+&& cp -r $SCRATCH/include/elpa-2024.03.001/modules/* $SCRATCH/include/
+WORKDIR /app
+
+
+# FFTW. 
+COPY ./fftw3.tar.gz /app/
+RUN tar -xzvf fftw3.tar.gz && mv fftw-3.3.10 fftw3
+WORKDIR /app/fftw3
+RUN source ~/.bashrc \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --enable-openmp --enable-mpi \
+&& make -j8 && make install \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --enable-openmp --enable-mpi --enable-single \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf fftw3 fftw3.tar.gz
+WORKDIR /app
+
+# #LibZ. 
+# COPY ./zlib.tar.gz /app/
+# RUN tar -xzvf zlib.tar.gz && mv zlib-1.3.1 zlib
+# WORKDIR /app/zlib
+# RUN source ~/.bashrc \
+# && CC=nvc CXX=nvc++ FC=nvfortran CFLAGS="-fPIC" ./configure --prefix=$SCRATCH \
+# && make && make install \
+# && cd .. \
+# && rm -rf zlib zlib.tar.gz
+# WORKDIR /app
+
+# HDF5. 
+COPY ./hdf5.tar.gz /app/
+RUN tar -xzvf hdf5.tar.gz && mv hdf5-1.14.4-2 hdf5
+WORKDIR /app/hdf5
+RUN source ~/.bashrc \
+&& CC=mpicc FC=mpif90 ./configure --prefix=$SCRATCH --enable-fortran --enable-shared --enable-parallel \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf hdf5 hdf5.tar.gz
+WORKDIR /app
+
+# QE. 
+COPY ./qe.tar.gz /app/
+RUN tar -xzvf qe.tar.gz 
+WORKDIR /app/q-e
+RUN source ~/.bashrc \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --with-hdf5=yes --with-scalapack=yes --with-elpa-include=$SCRATCH/include --with-elpa-lib=$SCRATCH/lib/libelpa.a
+# Even if the make all fails first time, it seems to pick up and build correct second time, so will do that. 
+RUN source ~/.bashrc && make all -j8 || true && make all -j8 && make install \
+&& cd .. \
+&& rm -rf q-e qe.tar.gz
+WORKDIR /app
+
+# BGW. 
+COPY ./bgw.tar.gz /app/
+COPY ./arch_mpich_openmpi.mk /app/
+RUN tar -xzvf bgw.tar.gz && mv BerkeleyGW bgw
+WORKDIR /app/bgw
+RUN source ~/.bashrc \
+&& cp ../arch_mpich_openmpi.mk ./arch.mk \
+&& make all-flavors -j8 \
+&& make install INSTDIR=$SCRATCH \
+&& cd .. \
+&& rm -rf bgw bgw.tar.gz arch_mpich_openmpi.mk
+WORKDIR /app
+
+# PETSC. 
+COPY ./petsc.tar.gz /app/
+RUN tar -xzvf petsc.tar.gz && mv petsc-3.21.3 petsc
+WORKDIR /app/petsc
+RUN source ~/.bashrc \
+&& ./configure --prefix=$SCRATCH --with-cc=mpicc --with-cxx=mpic++ --with-fc=mpif90 \
+&& make all -j8 && make install \
+&& cd .. \
+&& rm -rf petsc petsc.tar.gz
+WORKDIR /app
+
+# SLEPC. 
+COPY ./slepc.tar.gz /app/
+RUN tar -xzvf slepc.tar.gz && mv slepc-3.21.1 slepc
+WORKDIR /app/slepc
+RUN source ~/.bashrc \
+&& ./configure --prefix=$SCRATCH \
+&& make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH -j8 && make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH install \
+&& cd .. \
+&& rm -rf slepc slepc.tar.gz
+WORKDIR /app
+
+
+# Miniconda.
+#packages: numpy, cupy, pandas, scipy, sympy, mpi4py (pip over local), h5py (pip over hdf5 local), petsc4py (pip over local), slepc4py (pip over local)
+# pyqt, matplotlib, seaborn, pyvista, pyvistaqt, ase. 
+
+# For silent installation. 
+RUN wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-${PLATFORM}.sh \
+&& chmod u+x ./miniconda.sh \
+&& ./miniconda.sh -b -p $HOME/miniconda \
+&& rm -rf ./miniconda.sh \
+&& $HOME/miniconda/bin/conda init
+
+# Configure conda-forge and mamba.
+RUN source ~/.bashrc \ 
+&& conda config --add channels conda-forge && conda config --set channel_priority strict \
+&& conda install -y mamba 
+
+RUN source ~/.bashrc \
+&& mamba install -y numpy
+
+RUN source ~/.bashrc \
+&& mamba install -y pandas
+
+RUN source ~/.bashrc \
+&& mamba install -y scipy
+
+RUN source ~/.bashrc \
+&& mamba install -y sympy 
+
+# mpi4py. 
+COPY ./mpi4py.tar.gz /app/
+RUN tar -xzvf mpi4py.tar.gz && mv mpi4py-3.1.6 mpi4py
+WORKDIR /app/mpi4py
+RUN source ~/.bashrc \
+&& MPICC=mpicc CC=gcc pip3 install .  \
+&& cd .. \
+&& rm -rf mpi4py mpi4py.tar.gz
+WORKDIR /app
+
+# # mpi4py. 
+# RUN source ~/.bashrc \
+# && MPICC="mpicc" CC=nvc CFLAGS="-noswitcherror" pip3 install --force --no-cache-dir --no-binary=mpi4py mpi4py
+
+# h5py. 
+COPY ./h5py.tar.gz /app/
+RUN tar -xzvf h5py.tar.gz 
+WORKDIR /app/h5py
+RUN source ~/.bashrc \
+&& CC=mpicc HDF5_MPI="ON" HDF5_DIR="$SCRATCH" pip3 install . \
+&& cd .. \
+&& rm -rf h5py h5py.tar.gz
+WORKDIR /app
+
+
+# petsc4py. 
+COPY ./petsc4py.tar.gz /app/
+RUN tar -xzvf petsc4py.tar.gz 
+WORKDIR /app/petsc4py
+RUN source ~/.bashrc \
+&& CC=mpicc CXX=mpic++ FC=mpif90 python3 setup.py build \
+&& python3 setup.py install \
+&& cd .. \
+&& rm -rf petsc4py petsc4py.tar.gz
+WORKDIR /app
+
+# slepc4py. 
+COPY ./slepc4py.tar.gz /app/
+RUN tar -xzvf slepc4py.tar.gz && mv slepc4py-3.21.1 slepc4py
+WORKDIR /app/slepc4py
+RUN source ~/.bashrc \
+&& CC=mpicc CXX=mpic++ FC=mpif90 SLEPC_DIR=$SCRATCH PETSC_DIR=$SCRATCH python3 setup.py build \
+&& CC=mpicc CXX=mpic++ FC=mpif90 SLEPC_DIR=$SCRATCH PETSC_DIR=$SCRATCH python3 setup.py install \
+&& cd .. \
+&& rm -rf slepc4py slepc4py.tar.gz
+WORKDIR /app
+
+RUN source ~/.bashrc \
+&& mamba install -y pyqt 
+
+RUN source ~/.bashrc \
+&& mamba install -y matplotlib
+
+RUN source ~/.bashrc \
+&& mamba install -y seaborn
+
+RUN source ~/.bashrc \
+&& mamba install -y pyvista 
+
+RUN source ~/.bashrc \
+&& mamba install -y pyvistaqt
+
+RUN source ~/.bashrc \
+&& mamba install -y ase
+
+RUN source ~/.bashrc \
+&& pip3 install -q dill 
+
+RUN source ~/.bashrc \
+&& pip3 install -q pyyaml
+
+# Install pytorch from source.
+WORKDIR /app
+COPY ./pytorch.tar.gz /app/
+RUN tar -xzvf pytorch.tar.gz
+WORKDIR /app/pytorch
+RUN source ~/.bashrc \
+&& mamba install -y cmake ninja \
+&& pip3 install -q -r requirements.txt 
+RUN source ~/.bashrc \
+&& mamba install -y mkl-static mkl-include 
+RUN source ~/.bashrc \
+&& export USE_MPI=1 \
+&& export CMAKE_PREFIX_PATH='${CONDA_PREFIX:-"$(dirname $(which conda))/../"}' \
+&& python3 setup.py develop 
+RUN python3 setup.py install 
+RUN rm -rf /app/pytorch /app/pytorch.tar.gz 
+WORKDIR /app
+
+# torchvision and torchaudio
+COPY ./torchvision.tar.gz /app/
+RUN tar -xvf torchvision.tar.gz && mv vision torchvision
+WORKDIR /app/torchvision
+RUN source ~/.bashrc \
+&& export CMAKE_PREFIX_PATH='${CONDA_PREFIX:-"$(dirname $(which conda))/../"}' \
+&& python3 setup.py develop
+RUN python3 setup.py install 
+RUN rm -rf /app/torchvision /app/torchvision.tar.gz
+WORKDIR /app
+
+# torch geometric 
+COPY ./pytorch_geometric.tar.gz /app/
+RUN tar -xzvf pytorch_geometric.tar.gz 
+WORKDIR /app/pytorch_geometric
+RUN source ~/.bashrc \
+&& pip3 install .
+RUN rm -rf /app/pytorch_geometric /app/pytorch_geometric.tar.gz
+WORKDIR /app
+
+# e3nn
+RUN source ~/.bashrc \
+&& pip3 install -q e3nn
+
+# libxc.
+COPY ./libxc.tar.bz2 /app/
+RUN tar -xvf libxc.tar.bz2 && mv libxc-6.2.2 libxc
+WORKDIR /app/libxc
+RUN apt-get update \
+&& apt-get install -y autoconf
+RUN source ~/.bashrc \
+&& autoreconf -i \
+&& CC=mpicc FC=mpif90 ./configure --prefix=$SCRATCH \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf /app/libxc /app/libxc.tar.bz2
+WORKDIR /app
+
+# gpaw from source.
+COPY ./gpaw.tar.gz /app/
+RUN tar -xvf gpaw.tar.gz && mv gpaw-24.6.0 gpaw
+WORKDIR /app/gpaw
+COPY ./siteconfig.py /app/gpaw/
+# RUN source ~/.bashrc \
+# && pip3 install .
+# RUN rm -rf /app/gpaw /app/gpaw.tar.gz
+# WORKDIR /app
+
+# Post execs, libraries install steps. Here just copying some files. Could have done it earlier, but don't wanna compile again. 
+COPY ./kmesh.pl $SCRATCH/bin/
+
+# Finally set the working directory to home directory. 
+WORKDIR /app
+
+CMD ["/bin/bash"]

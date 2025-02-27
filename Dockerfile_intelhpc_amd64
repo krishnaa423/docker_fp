@@ -1,0 +1,281 @@
+FROM ubuntu:22.04
+
+# Dockerfile variables. 
+ARG IHPC_ROOT="/opt/intel/oneapi"
+ARG MPI_ROOT="/opt/intel/oneapi/mpi/latest"
+ARG SCRATCH="/usr/local"
+ARG APP="/app"
+
+# Shell. 
+ENV SHELL=/bin/bash
+ENV BASH_ENV=~/.bashrc
+SHELL ["/bin/bash", "-c"]
+
+# Working directory.
+RUN mkdir -p /app \
+&& mkdir -p ${MPI_ROOT} \
+&& mkdir -p ${SCRATCH}/bin \
+&& mkdir -p ${SCRATCH}/include \
+&& mkdir -p ${SCRATCH}/lib \ 
+&& apt update \
+&& apt install -y \
+    gpg \
+    gpg-agent \
+    wget \
+    curl \
+    build-essential \
+    gfortran \
+    libtool \
+    libtool-bin \
+    python3 \ 
+    git \
+    autoconf \
+    vim \
+    libgl1-mesa-glx \
+    libglu1-mesa \
+    mesa-common-dev \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev \
+    libglew-dev \
+    libglfw3-dev \
+    freeglut3-dev \
+    libglm-dev \
+    libassimp-dev \
+    libsoil-dev \
+    libgtk-3-dev \
+    pkg-config \
+&& git config --global --add safe.directory '*'  
+
+# Intel HPC. 
+RUN wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null \
+&& echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | tee /etc/apt/sources.list.d/oneAPI.list \
+&& apt update \
+&& apt install -y intel-hpckit 
+
+# Start up scripts. 
+RUN \
+# ~/.bashrc
+echo -e "\n\
+export IHPC_ROOT=${IHPC_ROOT} \n\
+export MPI_ROOT=${MPI_ROOT} \n\
+export SCRATCH=${SCRATCH} \n\
+export APP=${APP} \n\
+export PREVIOUS_PATH=\$PATH \n\
+export PREVIOUS_CPATH=\$CPATH \n\
+export PREVIOUS_LIBRARY_PATH=\$LIBRARY_PATH \n\
+export PREVIOUS_LD_LIBRARY_PATH=\$LD_LIBRARY_PATH \n\
+export PATH=\$SCRATCH/bin:\$MPI_ROOT/bin:\$PREVIOUS_PATH \n\
+export CPATH=\$SCRATCH/include:\$MPI_ROOT/include \n\
+export LIBRARY_PATH=\$SCRATCH/lib:\$MPI_ROOT/lib \n\
+export LD_LIBRARY_PATH=\$SCRATCH/lib:\$MPI_ROOT/lib \n\
+if [ -z \"\$MKLROOT\" ]; then source \$IHPC_ROOT/setvars.sh; fi \n\
+" > ~/.bashrc  
+
+# elpa. 
+RUN cd /app \
+&& source ~/.bashrc \
+&& git clone https://github.com/marekandreas/elpa.git \
+&& cd elpa \
+&& ./autogen.sh \
+# Can skip the C++ compiler apparently. Atleast on TACC Frontera cluster. 
+# On Frontera had to also change locale info based on error pasted into chatgpt.
+# export LANG=en_US.utf-8
+# export LANGUAGE=en_US.utf-8
+# export LC_ALL=en_US.utf-8
+&& FC=mpiifx CXX=mpiicpx CC=mpiicx ./configure \
+    --prefix=$SCRATCH \
+    FCFLAGS="-O3 -fPIC" \
+    CFLAGS="-O3 -fPIC" \
+    --enable-option-checking=fatal \
+    SCALAPACK_LDFLAGS="-L$MKLROOT/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_intelmpi_lp64 -lpthread " \
+    SCALAPACK_FCFLAGS="-I$MKL_HOME/include/intel64/lp64" \
+    --disable-sse \
+    --disable-avx --disable-avx2 --disable-avx512 \
+    --disable-shared \
+&& make -j8 && make install \
+&& ln -sf $SCRATCH/include/elpa-*/elpa $SCRATCH/include/elpa \
+&& cp $SCRATCH/include/elpa-*/modules/* $SCRATCH/include/ \
+&& cd .. \
+&& rm -rf elpa* 
+
+# petsc.
+RUN cd /app \
+&& source ~/.bashrc \
+&& git clone https://gitlab.com/petsc/petsc.git \
+&& cd petsc \
+&& ./configure --prefix=$SCRATCH --with-cc=mpiicx --with-cxx=mpiicpx --with-fc=mpiifx --with-python-exec=$HOME/miniconda/bin/python3 --with-petsc4py=1 --with-scalar-type=complex \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf petsc* 
+
+# slepc.
+RUN cd /app \
+&& source ~/.bashrc \
+&& git clone https://gitlab.com/slepc/slepc.git \
+&& cd slepc \
+&& CC=mpiicx CXX=mpiicpx FC=mpiifx PETSC_DIR=$SCRATCH ./configure --prefix=$SCRATCH \
+&& make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH -j8 && make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH install \
+&& cd .. \
+&& rm -rf slepc* 
+
+# hdf5. 
+RUN cd /app \
+&& source ~/.bashrc \
+&& git clone https://github.com/HDFGroup/hdf5.git \
+&& cd hdf5 \
+&& ./autogen.sh \
+&& CC=mpiicx FC=mpiifx ./configure --prefix=$SCRATCH --enable-fortran --enable-shared --enable-parallel \
+&& make -j8 && make install \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf hdf5* 
+
+# qe. 
+COPY ./kmesh.pl /app
+RUN cd /app \
+&& source ~/.bashrc \
+&& git clone https://gitlab.com/QEF/q-e.git \
+&& mv q-e qe \
+&& cd qe \
+&& CC=mpiicx CXX=mpiicpx FC=mpiifx ./configure --prefix=$SCRATCH --with-hdf5=yes --with-scalapack=intel --with-elpa-include=$SCRATCH/include --with-elpa-lib=$SCRATCH/lib/libelpa.a \
+&& make all -j8 || true && make all -j8 && make epw -j8 \
+&& make install \
+&& cd .. \
+&& cp ./kmesh.pl $SCRATCH/bin/kmesh.pl \
+&& rm -rf qe* kmesh.pl 
+
+# bgw. 
+COPY ./arch_intelhpc_cpu.mk /app/
+RUN cd /app \
+&& source ~/.bashrc \
+# Below link obtained from berkeleygw.org website. 
+&& wget -O bgw.tar.gz https://app.box.com/shared/static/22edl07muvhfnd900tnctsjjftbtcqc4.gz \
+&& tar -xzvf bgw.tar.gz && mv BerkeleyGW* bgw \
+&& cd bgw \
+&& cp ../arch_intelhpc_cpu.mk ./arch.mk \
+&& make all-flavors -j8 \
+&& make install INSTDIR=$SCRATCH \
+&& cd .. \
+&& rm -rf arch* bgw*
+
+# miniconda.
+RUN cd /app \
+&& source ~/.bashrc \
+&& wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+&& chmod u+x *.sh \
+&& ./miniconda.sh -b -p $HOME/miniconda \
+&& $HOME/miniconda/bin/conda init \
+&& rm -rf miniconda.sh 
+RUN cd /app \
+&& source ~/.bashrc \
+&& conda config --add channels conda-forge \
+&& conda config --set channel_priority strict \
+&& conda install -y mamba 
+
+# Build essentials: cmake, ninja, cython.
+RUN cd /app \
+&& source ~/.bashrc \
+&& pip3 install cmake ninja cython 
+
+# Parallel: numpy (prereq), mpi4py, petsc4py, slepc4py, h5py.
+RUN cd /app \
+&& source ~/.bashrc \
+&& pip3 install numpy \
+&& MPICC=mpiicx CC=icx pip3 install mpi4py --no-binary=mpi4py \
+# For petsc4py. 
+&& echo -e "export PYTHONPATH=\"$SCRATCH/lib:\$PYTHONPATH\" \n" >> ~/.bashrc \      
+&& CC=mpiicx CXX=mpiicpx FC=mpiifx PETSC_DIR=$SCRATCH SLEPC_DIR=$SCRATCH pip3 install  -q --no-binary=slepc4py slepc4py \
+&& CC=mpiicx HDF5_MPI="ON" HDF5_DIR="$SCRATCH" pip3 install h5py --no-binary=h5py
+
+# gpaw. 
+COPY siteconfig_testing.py /app/
+RUN cd /app \ 
+&& source ~/.bashrc \
+&& git clone https://gitlab.com/gpaw/gpaw.git \
+&& cd gpaw \
+&& cp ../siteconfig_testing.py ./siteconfig.py \
+&& pip3 install . \
+&& cd .. \
+&& rm -rf siteconfig* gpaw* \
+&& yes | gpaw install-data /root/gpaw-data
+
+# Serial torch, torchvision. 
+RUN cd /app \
+&& pip3 install torch torchvision torchaudio 
+
+# # torch.
+# # Frontera: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx CMAKE_CXX_FLAGS="-fstack-protector" MAX_JOBS=8 USE_MPI=1 USE_CUDA=0 USE_FBGEMM=0 BUILD_TEST=OFF python3 setup.py develop
+# # Perlmutter: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx MAX_JOBS=16 USE_CUDA=1 USE_DISTRIBUTED=1 USE_MPI=1 USE_SYSTEM_NCCL=1 BUILD_TEST=0 USE_NNPACK=0 USE_QNNPACK=0 USE_PYTORCH_QNNPATCK=0 USE_XNNPACK=0 python3 setup.py develop
+# RUN cd /app \
+# && source ~/.bashrc \
+# && git clone --recursive https://github.com/pytorch/pytorch.git 
+# RUN cd /app \
+# && cd pytorch \
+# && pip3 install -r requirements.txt \
+# && export CMAKE_PREFIX_PATH=/root/miniconda \
+# && USE_CUDA=0 USE_MPI=1 MAX_JOBS=2 python3 setup.py develop  
+
+# # torchvision. 
+# # Perlmutter: CC=mpicc CXX=mpicxx MAX_JOBS=16 python3 setup.py install
+# RUN cd /app \
+# && source ~/.bashrc \
+# && git clone https://github.com/pytorch/vision.git \
+# && cd vision \
+# && MAX_JOBS=2 python3 setup.py install  \
+# && cd .. && rm -rf vision 
+
+# torch_geometric.
+RUN cd /app \
+&& source ~/.bashrc \
+&& pip3 install torch_geometric 
+
+# pyg_lib, torch_cluster, e3nn.
+RUN cd /app \
+&& source ~/.bashrc \
+# && pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.2.0+cpu.html \
+&& pip3 install torch_cluster \
+&& pip3 install e3nn 
+
+# transformers, datasets, evaluate, accelerate.
+RUN cd /app \
+&& source ~/.bashrc \
+&& pip3 install transformers datasets accelerate evaluate 
+
+# Tier 1 packages.
+RUN cd \app \
+&& source ~/.bashrc \
+&& pip3 install jax scipy sympy pandas networkx lark \
+# pip3 install pyqt6 vtk
+&& apt install -y libgtk-4-dev \
+&& pip3 install pygobject \
+&& pip3 install matplotlib seaborn pyvista[all] pyvistaqt \
+&& pip3 install ase pymatgen mp_api astropy dill pyyaml xmltodict jupyterlab
+
+# Tier 2 packages.
+RUN cd /app \
+&& source ~/.bashrc \
+&& mamba create -y -n daskmpi-env python=3.12 dask-mpi \
+&& pip3 install scikit-learn joblib xgboost tensorboard torchserve torch-model-archiver \
+# && mamba create -y -n spacy-env python=3.7 spacy \
+# && conda activate spacy-env \
+# && python3 -m spacy download en_core_web_sm \
+# && conda deactivate \
+&& mamba create -y -n dolfinx-env python=3.12 fenics-dolfinx \
+&& pip3 install --no-deps fp-workflow xctph xctpol \
+&& pip3 install --prefer-binary pyscf \
+&& pip3 install pyopengl --no-build-isolation \
+&& pip3 install awscli
+
+# Jupyer R support.
+RUN cd /app \
+&& source ~/.bashrc \
+&& apt update -y \
+&& DEBIAN_FRONTEND=noninteractive apt install -y r-base \
+&& Rscript -e "install.packages('IRkernel', repos='https://cloud.r-project.org/')" \
+&& Rscript -e "IRkernel::installspec(user = FALSE)"
+
+# deephpack.
+
+# gmsh.
+
+# dolfinx.
