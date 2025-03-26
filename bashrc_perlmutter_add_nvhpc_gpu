@@ -1,0 +1,43 @@
+#!/bin/bash
+
+conda deactivate
+
+
+export CUDA_VER="12.2"
+export CUDA_ROOT="/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/cuda/12.2"
+export NVHPC_VER="23.9"
+export NVHPC_ROOT="/opt/nvidia/hpc_sdk/Linux_x86_64/$NVHPC_VER"
+
+module purge
+
+export PATH="$SCRATCH_NVHPC_GPU/bin:$MPI_NVHPC_GPU_ROOT/bin:$NVHPC_ROOT/compilers/bin:$NVHPC_ROOT/cuda/bin:$PREVIOUS_PATH"
+export CPATH="$SCRATCH_NVHPC_GPU/include:$MPI_NVHPC_GPU_ROOT/include:$NVHPC_ROOT/compilers/include:$NVHPC_ROOT/cuda/include:$NVHPC_ROOT/math_libs/include"
+export LIBRARY_PATH="$SCRATCH_NVHPC_GPU/lib:$MPI_NVHPC_GPU_ROOT/lib:$NVHPC_ROOT/compilers/lib:$NVHPC_ROOT/cuda/lib64:$NVHPC_ROOT/cuda/lib64/stubs:$NVHPC_ROOT/math_libs/lib64"
+export LD_LIBRARY_PATH="$SCRATCH_NVHPC_GPU/lib:$MPI_NVHPC_GPU_ROOT/lib:$NVHPC_ROOT/compilers/lib:$NVHPC_ROOT/cuda/lib64:$NVHPC_ROOT/cuda/lib64/stubs:$NVHPC_ROOT/math_libs/lib64"
+
+module load PrgEnv-nvidia 
+module load cray-mpich 
+module load cudatoolkit 
+module load craype-accel-nvidia80
+
+# MPI and OpenMP variables.
+export MPICH_GPU_SUPPORT_ENABLED=0
+export OMP_NUM_THREADS=2
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/pscratch/sd/k/krishnaa/nvhpc_gpu/miniconda/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/pscratch/sd/k/krishnaa/nvhpc_gpu/miniconda/etc/profile.d/conda.sh" ]; then
+        . "/pscratch/sd/k/krishnaa/nvhpc_gpu/miniconda/etc/profile.d/conda.sh"
+    else
+        export PATH="/pscratch/sd/k/krishnaa/nvhpc_gpu/miniconda/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+
+conda activate

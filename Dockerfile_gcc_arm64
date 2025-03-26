@@ -364,7 +364,8 @@ RUN cd /app \
 && pip3 install --prefer-binary pyscf \
 && pip3 install pyopengl --no-build-isolation \
 && pip3 install fastapi \
-&& pip3 install awscli 
+&& pip3 install awscli \
+&& conda update -y sqlite
 
 # Jupyer R support.
 RUN cd /app \

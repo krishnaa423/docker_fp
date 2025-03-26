@@ -1,0 +1,43 @@
+#!/bin/bash
+
+conda deactivate
+
+export CUDA_VER=12.2
+export CUDA_ROOT="/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/cuda/12.2"
+export NVHPC_VER=23.9
+export NVHPC_ROOT="/opt/nvidia/hpc_sdk/Linux_86_64/23.9"
+export CUDNN_ROOT="/global/common/software/nersc9/cudnn/9.1.0-cuda12/"
+export NCCL_ROOT="/global/common/software/nersc9/nccl/2.21.5"
+
+module purge
+
+export PATH="$SCRATCH_GCC_GPU/bin:$MPI_GCC_GPU_ROOT/bin:$CUDA_ROOT/bin:$PREVIOUS_PATH"
+export CPATH="$SCRATCH_GCC_GPU/include:$MPI_GCC_GPU_ROOT/include:$CUDA_ROOT/include:$NVHPC_ROOT/math_libs/lib64:$CUDNN_ROOT/include:$NCCL_ROOT/include"
+export LIBRARY_PATH="$SCRATCH_GCC_GPU/lib:$MPI_GCC_GPU_ROOT/lib:$NVHPC_ROOT/math_libs/lib64:$CUDNN_ROOT/lib:$NCCL_ROOT/plugins/lib:$NCCL_ROOT/lib:$CUDA_ROOT/lib64:$CUDA_ROOT/lib64/stubs"
+export LD_LIBRARY_PATH="$SCRATCH_GCC_GPU/lib:$MPI_GCC_GPU_ROOT/lib:$NVHPC_ROOT/math_libs/lib64:$CUDNN_ROOT/lib:$NCCL_ROOT/plugins/lib:$NCCL_ROOT/lib:$CUDA_ROOT/lib64:$CUDA_ROOT/lib64/stubs"
+
+# Based on https://github.com/sparticlesteve/nersc-pytorch-build/blob/main/config.sh
+module load cmake
+module load PrgEnv-gnu gcc-native/12.3
+module load cudatoolkit/12.2
+module load cudnn/9.1.0 
+module load nccl/2.21.5
+#module unload craype-accel-nvidia80
+export MPICH_GPU_SUPPORT_ENABLED=0
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/pscratch/sd/k/krishnaa/gcc_gpu/miniconda/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/pscratch/sd/k/krishnaa/gcc_gpu/miniconda/etc/profile.d/conda.sh" ]; then
+        . "/pscratch/sd/k/krishnaa/gcc_gpu/miniconda/etc/profile.d/conda.sh"
+    else
+        export PATH="/pscratch/sd/k/krishnaa/gcc_gpu/miniconda/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+conda activate
