@@ -3,6 +3,8 @@ FROM ubuntu:22.04
 # Dockerfile variables.
 ENV BASH_ENV=~/.bashrc
 ENV SHELL=/bin/bash
+ENV TZ=Etc/UTC
+ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
 # Common.
@@ -23,6 +25,7 @@ RUN mkdir -p /app \
   libssl-dev \
   git \ 
   vim \ 
+  tzdata \
   libgl1-mesa-dev \ 
   libglu1-mesa-dev \ 
   libgl1-mesa-glx \
@@ -122,9 +125,15 @@ RUN cd /app \
 && source ~/.bashrc \
 && git clone https://github.com/HDFGroup/hdf5.git \
 && cd hdf5 \
-&& ./autogen.sh \
-&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --enable-fortran --enable-shared --enable-parallel --with-zlib=$SCRATCH \
-&& make -j8 && make install \
+## If using autoconf. 
+# && ./autogen.sh \
+# && CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --enable-fortran --enable-shared --enable-parallel --with-zlib=$SCRATCH \
+# && make -j8 && make install \
+# If using cmake. 
+&& mkdir build \
+&& cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DHDF5_BUILD_FORTRAN=ON -DHDF5_ENABLE_PARALLEL=ON -DHDF5_ENABLE_ZLIB_SUPPORT=ON \
+&& cmake --build build \
+&& cmake --install build \
 && cd .. \
 && rm -rf hdf5* 
 
@@ -150,21 +159,13 @@ RUN cd /app \
 && cd .. \
 && rm -rf netcdf-fortran* 
 
-# libxc.
-RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://gitlab.com/libxc/libxc.git \
-&& cd libxc \
-&& autoreconf -i \
-&& CC=mpicc FC=mpif90 ./configure CFLAGS="-fPIC" --prefix=$SCRATCH \
-&& make -j8 && make install \
-&& cd .. \
-&& rm -rf libxc* 
-
 # petsc.
 RUN cd /app \
 && source ~/.bashrc \
-&& git clone https://gitlab.com/petsc/petsc.git \
+# && git clone https://gitlab.com/petsc/petsc.git \
+&& wget -O petsc.tar.gz https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-3.22.4.tar.gz \
+&& tar -xzvf petsc.tar.gz \
+&& mv petsc-* petsc \
 && cd petsc \
 && ./configure --prefix=$SCRATCH --with-scalar-type=complex --with-hdf5-dir=/usr/local \
 && make -j8 && make install \
@@ -174,7 +175,10 @@ RUN cd /app \
 # slepc.
 RUN cd /app \
 && source ~/.bashrc \
-&& git clone https://gitlab.com/slepc/slepc.git \
+# && git clone https://gitlab.com/slepc/slepc.git \
+&& wget -O slepc.tar.gz https://slepc.upv.es/download/distrib/slepc-3.22.2.tar.gz \
+&& tar -xzvf slepc.tar.gz \
+&& mv slepc-* slepc \
 && cd slepc \
 && ./configure --prefix=$SCRATCH \
 && make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH -j8 && make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH install \
@@ -192,6 +196,19 @@ RUN cd /app \
 && cd .. \
 && rm -rf boost*
 
+# libxc.
+RUN cd /app \
+&& source ~/.bashrc \
+# && git clone https://gitlab.com/libxc/libxc.git \
+&& wget -O libxc.tar.gz https://gitlab.com/libxc/libxc/-/archive/7.0.0/libxc-7.0.0.tar.bz2 \
+&& tar -xvf libxc.tar.gz && mv libxc-* libxc \
+&& cd libxc \
+&& autoreconf -i \
+&& CC=mpicc FC=mpif90 ./configure CFLAGS="-fPIC" --prefix=$SCRATCH \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf libxc* 
+
 # qe. 
 COPY ./kmesh.pl /app
 RUN cd /app \
@@ -199,7 +216,7 @@ RUN cd /app \
 && git clone https://gitlab.com/QEF/q-e.git \
 && mv q-e qe \
 && cd qe \
-&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --with-scalapack=yes --with-elpa-include=$SCRATCH/include --with-elpa-lib=$SCRATCH/lib/libelpa.a --with-hdf5=yes \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --with-scalapack=yes --with-elpa-include=$SCRATCH/include --with-elpa-lib=$SCRATCH/lib/libelpa.a -with-hdf5=yes --with-hdf5-include=/usr/local/include --with-hdf5-libs="-L/usr/local/lib -lhdf5_hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 -lz -ldl -lm" \
 && make all -j8 || true && make all -j8 && make epw -j8 \
 && make install \
 && cd .. \
@@ -215,7 +232,6 @@ RUN cd /app \
 && tar -xzvf bgw.tar.gz && mv BerkeleyGW* bgw \
 && cd bgw \
 && cp ../arch_gcc_cpu.mk ./arch.mk \
-&& export SCRATCH_GCC_GPU=$SCRATCH \
 && make all-flavors -j8 \
 && make install INSTDIR=$SCRATCH \
 && cd .. \
@@ -261,6 +277,16 @@ RUN cd /app \
 && cd .. \
 && rm -rf siesta*
 
+# optional: abinit, bigdft, columbus, conquest, cp2k, nwchem, yambo. 
+RUN cd /app \
+&& source ~/.bashrc \
+&& apt-get install -y abinit cp2k nwchem
+
+# openscad, freecad, ngspice, kicad, magic. 
+RUN cd /app \
+&& source ~/.bashrc \
+&& apt-get install -y ngspice openscad freecad kicad magic 
+
 # miniconda.
 RUN cd /app \
 && source ~/.bashrc \
@@ -285,9 +311,21 @@ RUN cd /app \
 && source ~/.bashrc \
 && pip3 install numpy \
 && MPICC=mpicc CC=gcc pip3 install --no-binary=mpi4py mpi4py \
-&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH pip3 install --no-deps --no-build-isolation petsc4py \
-&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH SLEPC_DIR=$SCRATCH pip3 install --no-deps --no-build-isolation slepc4py \
-&& CC=mpicc HDF5_MPI="ON" HDF5_DIR="$SCRATCH"  pip3 install --no-binary=h5py h5py 
+&& CC=mpicc HDF5_MPI="ON" HDF5_DIR="$SCRATCH"  pip3 install --no-binary=h5py h5py \
+# && CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH pip3 install --no-deps --no-build-isolation petsc4py \
+# && CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH SLEPC_DIR=$SCRATCH pip3 install --no-deps --no-build-isolation slepc4py \
+&& wget -O petsc4py.tar.gz https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc4py-3.22.4.tar.gz \
+&& tar -xzvf petsc4py.tar.gz && mv petsc4py-* petsc4py \
+&& cd petsc4py \
+&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH pip3 install . \
+&& cd .. \
+&& rm -rf petsc4py* \
+&& wget -O slepc4py.tar.gz https://slepc.upv.es/download/distrib/slepc4py-3.22.2.tar.gz \
+&& tar -xzvf slepc4py.tar.gz && mv slepc4py-* slepc4py \
+&& cd slepc4py \
+&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH SLEPC_DIR=$SCRATCH pip3 install . \
+&& cd .. \
+&& rm -rf slepc4py* 
 
 # gpaw. 
 COPY siteconfig_testing.py /app/
@@ -349,7 +387,7 @@ RUN cd \app \
 && pip3 install jax scipy sympy pandas networkx lark \
 # pip3 install pyqt6 vtk
 && apt install -y libgtk-4-dev \
-&& pip3 install pygobject \
+# && pip3 install pygobject \
 && pip3 install matplotlib seaborn pyvista[all] pyvistaqt \
 && pip3 install ase pymatgen mp_api astropy dill pyyaml xmltodict jupyterlab
 
@@ -360,6 +398,7 @@ RUN cd /app \
 && pip3 install scikit-learn joblib xgboost lightning tensorboard torchserve torch-model-archiver \
 && mamba install -y gmsh \
 && mamba create -y -n dolfinx-env python=3.12 fenics-dolfinx \
+# && conda create -y -n meep-env -c conda-forge python3=3.12 pymeep=*=mpi_mpich_* \
 && pip3 install --no-deps fp-workflow xctph xctpol \
 && pip3 install --prefer-binary pyscf \
 && pip3 install pyopengl --no-build-isolation \
@@ -403,3 +442,12 @@ RUN cd /app \
 && pip3 install . \
 && cd .. \
 && rm -rf DeepH-pack 
+
+# hpro. Package for pw to radial basis. 
+RUN cd /app \
+&& source ~/.bashrc \
+&& git clone https://github.com/Xiaoxun-Gong/HPRO.git \
+&& cd HPRO/src \
+&& pip3 install . \
+&& cd .. \
+&& rm -rf HPRO 

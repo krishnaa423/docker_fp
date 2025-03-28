@@ -29,11 +29,11 @@ C_OPTS  = -O0 -g
 REMOVE  = /bin/rm -f
 
 # Math Libraries
-FFTWLIB      = ${SCRATCH_GCC_GPU}/lib/libfftw3_mpi.a ${SCRATCH_GCC_GPU}/lib/libfftw3_omp.a ${SCRATCH_GCC_GPU}/lib/libfftw3.a
-FFTWINCLUDE  = ${SCRATCH_GCC_GPU}/include
-LAPACKLIB    = ${SCRATCH_GCC_GPU}/lib/libopenblas.a
-SCALAPACKLIB = ${SCRATCH_GCC_GPU}/lib/libscalapack.a
-HDF5LIB      = ${SCRATCH_GCC_GPU}/lib/libhdf5_hl_fortran.a ${SCRATCH_GCC_GPU}/lib/libhdf5_hl.a ${SCRATCH_GCC_GPU}/lib/libhdf5_fortran.a ${SCRATCH_GCC_GPU}/lib/libhdf5.a -lz -ldl
-HDF5INCLUDE  = ${SCRATCH_GCC_GPU}/include
-ELPALIB      = ${SCRATCH_GCC_GPU}/lib/libelpa.a
-ELPAINCLUDE  = ${SCRATCH_GCC_GPU}/include
+FFTWLIB      = ${SCRATCH}/lib/libfftw3_mpi.a ${SCRATCH}/lib/libfftw3_omp.a ${SCRATCH}/lib/libfftw3.a
+FFTWINCLUDE  = ${SCRATCH}/include
+LAPACKLIB    = ${SCRATCH}/lib/libopenblas.a
+SCALAPACKLIB = ${SCRATCH}/lib/libscalapack.a
+HDF5LIB      = -L${SCRATCH} -lhdf5_hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 -lz -ldl -lm 
+HDF5INCLUDE  = ${SCRATCH}/include
+ELPALIB      = ${SCRATCH}/lib/libelpa.a
+ELPAINCLUDE  = ${SCRATCH}/include
