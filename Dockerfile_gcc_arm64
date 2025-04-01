@@ -1,81 +1,137 @@
-FROM ubuntu:22.04
+FROM docker.io/ubuntu:22.04 
+# FROM docker.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
+# FROM docker.io/rocm/dev-ubuntu-22.04:6.3.4-complete
 
 # Dockerfile variables.
-ENV BASH_ENV=~/.bashrc
-ENV SHELL=/bin/bash
-ENV TZ=Etc/UTC
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PS1='\[\e[0;32m\]\u@\h:\[\e[0;34m\]\w\[\e[0m\]\$ '
+ENV SHELL=/bin/bash
+ENV BASH_ENV=~/.bashrc
 SHELL ["/bin/bash", "-c"]
+ENV TZ=Etc/UTC
+ENV GCC_VER=11.4.0
+ENV SCRATCH=/usr/local
+ENV PATH="$SCRATCH/bin:$PATH"
+ENV CPATH="$SCRATCH/include"
+ENV LIBRARY_PATH="$SCRATCH/lib"
+ENV LD_LIBRARY_PATH="$SCRATCH/lib"
+ENV CONDA_ROOT=$SCRATCH/miniconda
+ENV PATH=$CONDA_ROOT/bin:$PATH
+# # cuda.
+# ENV CUDA_ROOT=/usr/local/cuda
+# ENV CUDA_HOME=$CUDA_ROOT
+# ENV PATH=$CUDA_ROOT/bin:$PATH
+# ENV CPATH=$CUDA_ROOT/include:$CPATH
+# ENV LIBRARY_PATH=$CUDA_ROOT/lib64:$LIBRARY_PATH
+# ENV LD_LIBRARY_PATH=$CUDA_ROOT/lib64:$LD_LIBRARY_PATH
+# # rocm.
+# ENV ROCM_ROOT=/opt/rocm
+# ENV ROCM_HOME=$CUDA_ROOT
+# ENV PATH=$ROCM_ROOT/bin:$PATH
+# ENV CPATH=$ROCM_ROOT/include:$ROCM_ROOT
+# ENV LIBRARY_PATH=$ROCM_ROOT/lib:$LIBRARY_PATH
+# ENV LD_LIBRARY_PATH=$ROCM_ROOT/lib64:$LD_LIBRARY_PATH
 
-# Common.
+# common apt. 
 RUN mkdir -p /app \
 && apt update  \
 && apt install -y \
-  nasm \ 
   build-essential \ 
+  software-properties-common \
+  libssl-dev \
+  bison \
+  flex \
+  nasm \ 
   gfortran \ 
   python3 \
-  pkg-config \ 
+  python3-pip \
   cmake \ 
   cmake-curses-gui \ 
-  libtool \ 
+  ninja-build \
+  meson \
   autoconf \ 
+  libtool \ 
+  pkg-config \ 
   wget \ 
   curl \ 
-  libssl-dev \
-  git \ 
   vim \ 
-  tzdata \
+  git \ 
   libgl1-mesa-dev \ 
   libglu1-mesa-dev \ 
   libgl1-mesa-glx \
-&& echo -e "\n\
-export SHELL="/usr/bin/bash" \n\
-export PATH="/usr/local/bin:\$PATH" \n\
-export CPATH="/usr/local/include" \n\
-export LIBRARY_PATH="/usr/local/lib" \n\
-export LD_LIBRARY_PATH="/usr/local/lib" \n\
-export SCRATCH="/usr/local" \n\
-PS1=\"\\[\\033[1;32m\\]\\u@\\h \\[\\033[1;34m\\]\\w \\[\\033[1;31m\\]\\$ \\[\\033[0m\\] \"\n\
-" > ~/.bashrc 
+  libgtk-4-dev libgirepository1.0-dev libcairo2-dev gir1.2-glib-2.0 \
+  qt6-base-dev qt6-tools-dev qt6-tools-dev-tools \
+  tzdata 
 
-# cmake.
+# miniconda. 
 RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://github.com/Kitware/CMake.git \
-&& cd CMake \
+&& wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+&& chmod +x miniconda.sh \
+&& bash miniconda.sh -b -p $CONDA_ROOT \
+&& $HOME/miniconda/bin/conda init \
+&& rm -rf miniconda.sh 
+
+# common python. 
+RUN cd /app \
+&& ln -sf /usr/bin/python3 /usr/bin/python \
+&& ln -sf /usr/bin/pip3 /usr/bin/pip \
+&& conda activate \
+&& pip3 install cmake ninja cython
+
+# cmake. 
+RUN cd /app \
+&& wget -O cmake.tar.gz https://github.com/Kitware/CMake/archive/refs/tags/v4.0.0.tar.gz \
+&& tar -xzvf cmake.tar.gz && mv CMake-* cmake \
+&& cd cmake \
 && CC=gcc CXX=g++ FC=gfortran ./bootstrap --prefix=$SCRATCH \
 && make -j8 && make install \
 && cd .. \
-&& rm -rf CMake*
+&& rm -rf cmake*
 
-# mpich.
+# boost. 
 RUN cd /app \
-&& source ~/.bashrc \
-&& git clone --recursive https://github.com/pmodels/mpich.git \
-&& cd mpich \
-&& ./autogen.sh \
-&& CC=gcc CXX=g++ FC=gfortran ./configure --prefix=$SCRATCH \
-&& make -j8 && make install \
+&& wget -O boost.tar.gz https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz \
+&& tar -xzvf boost.tar.gz && rm -rf boost.tar.gz && mv boost* boost \
+&& cd boost \
+&& ./bootstrap.sh --prefix=$SCRATCH \
+&& ./b2 -j8 install --prefix=$SCRATCH \
 && cd .. \
-&& rm -rf mpich* 
+&& rm -rf boost*
 
-# openblas.
+# openblas. 
 RUN cd /app \
 && source ~/.bashrc \
-&& git clone https://github.com/OpenMathLib/OpenBLAS.git \ 
-&& mv OpenBLAS openblas \
+&& wget -O openblas.tar.gz https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.29/OpenBLAS-0.3.29.tar.gz \
+&& tar-xzvf openblas.tar.gz && mv OpenBLAS-* openblas \
 && cd openblas \
 && make USE_OPENMP=1 COMMON_OPT="-fPIC" -j8 \
 && make install PREFIX=$SCRATCH \
 && cd .. \
 && rm -rf openblas* 
 
-# scalapack.
+# numpy, jax, xarray, pandas, scipy, sympy. 
+RUN cd /app \
+&& conda activate \
+&& pip3 install numpy jax xarray pandas scipy sympy 
+
+# mpich, mpi4py. 
+RUN cd /app \
+&& wget -O mpich.tar.gz https://github.com/pmodels/mpich/releases/download/v4.2.2/mpich-4.2.2.tar.gz \
+&& tar -xzvf mpich.tar.gz && mv mpich-* mpich \
+&& cd mpich \
+&& ./autogen.sh \
+&& CC=gcc CXX=g++ FC=gfortran ./configure --prefix=$SCRATCH \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf mpich* \
+&& conda activate \
+&& MPICC=mpicc CC=gcc pip3 install --no-binary=mpi4py mpi4py==4.0.0
+
+# scalapack. 
 COPY SLmake.inc_mpich_openmpi /app/
 RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://github.com/Reference-ScaLAPACK/scalapack.git \
+&& wget -O scalapack.tar.gz https://github.com/Reference-ScaLAPACK/scalapack/archive/refs/tags/v2.2.2.tar.gz \
+&& tar -xzvf scalapack.tar.gz && mv scalapack-* scalapack \
 && cd scalapack \
 && cp ../SLmake.inc* ./SLmake.inc \
 && make lib \
@@ -83,10 +139,10 @@ RUN cd /app \
 && cd .. \
 && rm -rf scalapack* SLmake.inc*
 
-# elpa.
+# elpa. 
 RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://github.com/marekandreas/elpa.git \
+&& wget -O elpa.tar.gz https://github.com/marekandreas/elpa/archive/refs/tags/new_release_2024.05.001.tar.gz \
+&& tar -xzvf elpa.tar.gz && mv elpa-* elpa \
 && cd elpa \
 && ./autogen.sh \
 && CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --disable-sse --disable-sse-assembly --disable-avx --disable-avx2 --disable-avx512 CFLAGS="-O3 -fPIC" LDFLAGS="-L$SCRATCH/lib" LIBS="-lscalapack -lopenblas" \
@@ -96,9 +152,8 @@ RUN cd /app \
 && cd .. \
 && rm -rf elpa* 
 
-# fftw.
+# fftw. 
 RUN cd /app \
-&& source ~/.bashrc \
 && wget -O fftw3.tar.gz https://fftw.org/fftw-3.3.10.tar.gz \
 && tar -xzvf fftw3.tar.gz && mv fftw-* fftw3 \
 && cd fftw3 \
@@ -110,72 +165,71 @@ RUN cd /app \
 && cd .. \
 && rm -rf fftw3* 
 
-# zlib.
+# zlib. 
 RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://github.com/madler/zlib.git \
+&& wget -O zlib.tar.gz https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
+&& tar -xzvf zlib.tar.gz && mv zlib-* zlib \
 && cd zlib \
 && ./configure --prefix=$SCRATCH \
 && make -j8 && make install \
 && cd .. \
 && rm -rf zlib*
 
-# hdf5.
+# hdf5, h5py. 
 RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://github.com/HDFGroup/hdf5.git \
+&& wget -O hdf5.tar.gz https://github.com/HDFGroup/hdf5/archive/refs/tags/hdf5_1.14.6.tar.gz \
+&& tar -xzvf hdf5.tar.gz && mv hdf5-* hdf5 \
 && cd hdf5 \
-## If using autoconf. 
-# && ./autogen.sh \
-# && CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --enable-fortran --enable-shared --enable-parallel --with-zlib=$SCRATCH \
-# && make -j8 && make install \
-# If using cmake. 
 && mkdir build \
-&& cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DHDF5_BUILD_FORTRAN=ON -DHDF5_ENABLE_PARALLEL=ON -DHDF5_ENABLE_ZLIB_SUPPORT=ON \
+&& cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$SCRATCH -DHDF5_BUILD_FORTRAN=ON -DHDF5_ENABLE_PARALLEL=ON -DHDF5_ENABLE_ZLIB_SUPPORT=ON \
 && cmake --build build \
 && cmake --install build \
 && cd .. \
-&& rm -rf hdf5* 
+&& rm -rf hdf5* \
+&& conda activate \
+&& CC=mpicc HDF5_MPI="ON" HDF5_DIR="$SCRATCH"  pip3 install --no-binary=h5py h5py
 
-# netcdf-c.
+# netcdf-c, netcdf-fortran, ncpy. 
 RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://github.com/Unidata/netcdf-c.git \
+# netcdf-c.
+&& wget -O netcdf-c.tar.gz https://github.com/Unidata/netcdf-c/archive/refs/tags/v4.9.3.tar.gz \
+&& tar -xzvf netcdf-c.tar.gz && mv netcdf-c-* netcdf-c \
 && cd netcdf-c \
 && autoreconf -i \
 && CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --disable-libxml2 --disable-dap --disable-nczarr \
 && make -j8 && make install \
 && cd .. \
-&& rm -rf netcdf-c* 
-
-# netcdf-fortran.
-RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://github.com/Unidata/netcdf-fortran.git \
+&& rm -rf netcdf-c* \
+# netcdf-fortran. 
+&& wget -O netcdf-fortran.tar.gz  https://github.com/Unidata/netcdf-fortran/archive/refs/tags/v4.6.2.tar.gz \
+&& tar -xzvf netcdf-fortran.tar.gz && mv netcdf-fortran-* netcdf-fortran \
 && cd netcdf-fortran \
 && autoreconf -i \
 && CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH \
 && make -j8 && make install \
 && cd .. \
-&& rm -rf netcdf-fortran* 
+&& rm -rf netcdf-fortran* \
+# netcdf-python. 
+&& wget -O netcdf4-python.tar.gz https://github.com/Unidata/netcdf4-python/archive/refs/tags/v1.7.1.post1.tar.gz \
+&& tar -xzvf netcdf4-python.tar.gz && mv netcdf4-python-* netcdf4-python \
+&& cd netcdf4-python \
+&& conda activate \
+&& pip3 install -v . \
+&& cd .. \
+&& rm -rf netcdf4-python*
 
-# petsc.
+# petsc, slepc, petsc4py, slepc4py. 
 RUN cd /app \
-&& source ~/.bashrc \
-# && git clone https://gitlab.com/petsc/petsc.git \
+# petsc.
 && wget -O petsc.tar.gz https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-3.22.4.tar.gz \
 && tar -xzvf petsc.tar.gz \
 && mv petsc-* petsc \
 && cd petsc \
-&& ./configure --prefix=$SCRATCH --with-scalar-type=complex --with-hdf5-dir=/usr/local \
+&& ./configure --prefix=$SCRATCH --with-scalar-type=complex --with-hdf5-dir=$SCRATCH \
 && make -j8 && make install \
 && cd .. \
-&& rm -rf petsc* 
-
-# slepc.
-RUN cd /app \
-&& source ~/.bashrc \
-# && git clone https://gitlab.com/slepc/slepc.git \
+&& rm -rf petsc* \
+# slepc. 
 && wget -O slepc.tar.gz https://slepc.upv.es/download/distrib/slepc-3.22.2.tar.gz \
 && tar -xzvf slepc.tar.gz \
 && mv slepc-* slepc \
@@ -183,77 +237,87 @@ RUN cd /app \
 && ./configure --prefix=$SCRATCH \
 && make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH -j8 && make SLEPC_DIR=/app/slepc PETSC_DIR=$SCRATCH install \
 && cd .. \
-&& rm -rf slepc* 
+&& rm -rf slepc* \
+# petsc4py.
+&& wget -O petsc4py.tar.gz https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc4py-3.22.4.tar.gz \
+&& tar -xzvf petsc4py.tar.gz && mv petsc4py-* petsc4py \
+&& cd petsc4py \
+&& conda activate \
+&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH pip3 install . \
+&& cd .. \
+&& rm -rf petsc4py* \
+# slepc4py. 
+&& wget -O slepc4py.tar.gz https://slepc.upv.es/download/distrib/slepc4py-3.22.2.tar.gz \
+&& tar -xzvf slepc4py.tar.gz && mv slepc4py-* slepc4py \
+&& cd slepc4py \
+&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH SLEPC_DIR=$SCRATCH pip3 install . \
+&& cd .. \
+&& rm -rf slepc4py* 
 
-# boost. 
+# qe, west, westpy.
+COPY ./kmesh.pl  /app/
 RUN cd /app \
 && source ~/.bashrc \
-&& wget -O boost.tar.gz https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz \
-&& tar -xzvf boost.tar.gz && rm -rf boost.tar.gz && mv boost* boost \
-&& cd boost \
-&& ./bootstrap.sh --prefix=$SCRATCH \
-&& ./b2 -j8 install --prefix=$SCRATCH \
-&& cd .. \
-&& rm -rf boost*
-
-# libxc.
-RUN cd /app \
-&& source ~/.bashrc \
-# && git clone https://gitlab.com/libxc/libxc.git \
-&& wget -O libxc.tar.gz https://gitlab.com/libxc/libxc/-/archive/7.0.0/libxc-7.0.0.tar.bz2 \
-&& tar -xvf libxc.tar.gz && mv libxc-* libxc \
-&& cd libxc \
-&& autoreconf -i \
-&& CC=mpicc FC=mpif90 ./configure CFLAGS="-fPIC" --prefix=$SCRATCH \
-&& make -j8 && make install \
-&& cd .. \
-&& rm -rf libxc* 
-
 # qe. 
-COPY ./kmesh.pl /app
-RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://gitlab.com/QEF/q-e.git \
-&& mv q-e qe \
+&& wget -O qe.tar.gz https://gitlab.com/QEF/q-e/-/archive/qe-7.3.1/q-e-qe-7.3.1.tar.gz \
+&& tar -xzvf qe.tar.gz && mv q-e-* qe \
 && cd qe \
-&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --with-scalapack=yes --with-elpa-include=$SCRATCH/include --with-elpa-lib=$SCRATCH/lib/libelpa.a -with-hdf5=yes --with-hdf5-include=/usr/local/include --with-hdf5-libs="-L/usr/local/lib -lhdf5_hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 -lz -ldl -lm" \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --with-scalapack=yes --with-elpa-include=$SCRATCH/include --with-elpa-lib=$SCRATCH/lib/libelpa.a -with-hdf5=yes --with-hdf5-include=$SCRATCH/include --with-hdf5-libs="-L$SCRATCH/lib -lhdf5_hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 -lz -ldl -lm" \
 && make all -j8 || true && make all -j8 && make epw -j8 \
+# west.
+&& wget -O West.tar.gz https://github.com/west-code-development/West/archive/refs/tags/v6.2.0.tar.gz \
+&& tar -xzvf West.tar.gz && mv West-* West \
+&& cd ./West \
+&& CC=mpicc F90=mpif90 MPIF90=mpif90 BLAS_LIBS="-L$SCRATCH -lopenblas" LAPACK_LIBS="-L/usr/local -lopenblas" LIBDIRS="-L$SCRATCH " make conf PYT=python3 PYT_LDFLAGS="`python3-config --ldflags --embed`" \
+&& make all -j8 \
+&& cd .. \
 && make install \
 && cd .. \
+# westpy. 
+&& wget -O westpy.tar.gz https://github.com/west-code-development/westpy/archive/refs/tags/v6.2.0.tar.gz \
+&& tar -xzvf westpy.tar.gz && mv westpy-* westpy \
+&& cd westpy \
+&& conda activate \
+&& pip install . \
+&& cd .. \
 && cp ./kmesh.pl $SCRATCH/bin/kmesh.pl \
-&& rm -rf qe* kmesh.pl 
+&& rm -rf westpy* qe* kmesh.pl 
 
-# bgw.
-COPY arch_gcc_cpu.mk /app/
+# abinit, abipy. 
 RUN cd /app \
-&& source ~/.bashrc \
-# Below link obtained from berkeleygw.org website. 
-&& wget -O bgw.tar.gz https://app.box.com/shared/static/22edl07muvhfnd900tnctsjjftbtcqc4.gz \
-&& tar -xzvf bgw.tar.gz && mv BerkeleyGW* bgw \
-&& cd bgw \
-&& cp ../arch_gcc_cpu.mk ./arch.mk \
-&& make all-flavors -j8 \
-&& make install INSTDIR=$SCRATCH \
+&& wget -O abinit.tar.gz https://github.com/abinit/abinit/archive/refs/tags/10.2.7.tar.gz \
+&& tar -xzvf abinit.tar.gz && mv abinit-* abinit \
+&& cd abinit \
+&& ./autogen.sh \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH \
+  # --with-mpi="yes" \
+  # --enable-mpi-io="yes" \
+  # --with-linalg-flavor="openblas+netlib" \
+  # LINALG_LIBS="-L$SCRATCH -lelpa -lscalapack -lopenblas" \
+  # --with-fftw3="yes" \
+  # --with-fft-flavor="fftw3" \
+  # --with-libxc="yes" \
+  # --with-hdf5="yes" \
+  # --with-netcdf="yes" \
+  # --with-netcdf-fortran="yes" \
+&& make -j8 \
+&& make install \
 && cd .. \
-&& rm -rf arch* bgw*
-
-# abacus. 
-RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://github.com/abacusmodeling/abacus-develop.git \
-&& mv abacus-develop abacus \
-&& cd abacus \
-&& mkdir -p build \
-&& CXX=mpic++ cmake -B build -DCMAKE_INSTALL_PREFIX=$SCRATCH \
-&& cmake --build build -j8 \
-&& cmake --install build \
+&& rm -rf abinit* \
+# abipy. 
+&& wget -O abipy.tar.gz https://github.com/abinit/abipy/archive/refs/tags/0.9.8.tar.gz \
+&& tar -xzvf abipy.tar.gz && mv abipy-* abipy \
+&& cd abipy \
+&& conda activate \
+&& pip install . \
 && cd .. \
-&& rm -rf abacus* 
+&& rm -rf abipy*
 
-# siesta.
+# siesta. 
 RUN cd /app \
 && source ~/.bashrc \
-&& git clone https://gitlab.com/siesta-project/siesta.git \
+&& wget -O siesta.tar.gz https://gitlab.com/siesta-project/siesta/-/releases/5.2.2/downloads/siesta-5.2.2.tar.gz \
+&& tar -xzvf siesta.tar.gz && mv siesta-* siesta \
 && cd siesta \
 && mkdir build \
 && cmake -S . -B ./build -DCMAKE_INSTALL_PREFIX=$SCRATCH \
@@ -277,152 +341,169 @@ RUN cd /app \
 && cd .. \
 && rm -rf siesta*
 
-# optional: abinit, bigdft, columbus, conquest, cp2k, nwchem, yambo. 
+# abacus. 
 RUN cd /app \
-&& source ~/.bashrc \
-&& apt-get install -y abinit cp2k nwchem
-
-# openscad, freecad, ngspice, kicad, magic. 
-RUN cd /app \
-&& source ~/.bashrc \
-&& apt-get install -y ngspice openscad freecad kicad magic 
-
-# miniconda.
-RUN cd /app \
-&& source ~/.bashrc \
-&& wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh \
-&& chmod u+x *.sh \
-&& ./miniconda.sh -b -p $HOME/miniconda \
-&& $HOME/miniconda/bin/conda init \
-&& rm -rf miniconda.sh 
-RUN cd /app \
-&& source ~/.bashrc \
-&& conda config --add channels conda-forge \
-&& conda config --set channel_priority strict \
-&& conda install -y mamba 
-
-# Build essentials: cmake, ninja, cython.
-RUN cd /app \
-&& source ~/.bashrc \
-&& pip3 install cmake ninja cython 
-
-# Parallel: numpy (prereq), mpi4py, petsc4py, slepc4py, h5py.
-RUN cd /app \
-&& source ~/.bashrc \
-&& pip3 install numpy \
-&& MPICC=mpicc CC=gcc pip3 install --no-binary=mpi4py mpi4py \
-&& CC=mpicc HDF5_MPI="ON" HDF5_DIR="$SCRATCH"  pip3 install --no-binary=h5py h5py \
-# && CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH pip3 install --no-deps --no-build-isolation petsc4py \
-# && CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH SLEPC_DIR=$SCRATCH pip3 install --no-deps --no-build-isolation slepc4py \
-&& wget -O petsc4py.tar.gz https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc4py-3.22.4.tar.gz \
-&& tar -xzvf petsc4py.tar.gz && mv petsc4py-* petsc4py \
-&& cd petsc4py \
-&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH pip3 install . \
+&& wget -O abacus.tar.gz https://github.com/abacusmodeling/abacus-develop/archive/refs/tags/v3.9.0.tar.gz \
+&& tar -xzvf abacus.tar.gz && mv abacus-develop-* abacus \
+&& cd abacus \
+&& mkdir -p build \
+&& CXX=mpic++ cmake -B build -DCMAKE_INSTALL_PREFIX=$SCRATCH \
+&& cmake --build build -j8 \
+&& cmake --install build \
 && cd .. \
-&& rm -rf petsc4py* \
-&& wget -O slepc4py.tar.gz https://slepc.upv.es/download/distrib/slepc4py-3.22.2.tar.gz \
-&& tar -xzvf slepc4py.tar.gz && mv slepc4py-* slepc4py \
-&& cd slepc4py \
-&& CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH SLEPC_DIR=$SCRATCH pip3 install . \
-&& cd .. \
-&& rm -rf slepc4py* 
+&& rm -rf abacus* 
 
-# gpaw. 
-COPY siteconfig_testing.py /app/
-RUN cd /app \ 
-&& source ~/.bashrc \
-&& git clone https://gitlab.com/gpaw/gpaw.git \
-&& cd gpaw \
-&& cp ../siteconfig_testing.py ./siteconfig.py \
-&& pip3 install . \
-&& cd .. \
-&& rm -rf siteconfig* gpaw* \
-&& yes | gpaw install-data /root/gpaw-data
-
-# Serial torch, torchvision. 
+# openmx. 
+COPY ./openmx_makefile /app/
 RUN cd /app \
-&& pip3 install torch torchvision torchaudio 
+&& wget -O openmx.tar.gz https://www.openmx-square.org/openmx3.9.tar.gz \
+&& wget -O patch.tar.gz https://www.openmx-square.org/bugfixed/21Oct17/patch3.9.9.tar.gz \
+&& tar -xzvf openmx.tar.gz && rm -rf openmx.tar.gz && mv openmx3.9 openmx \
+&& cd openmx/source \
+&& cp ../../patch.tar.gz . \
+&& tar -xzvf patch.tar.gz && rm -rf patch.tar.gz \
+&& cp ../../openmx_makefile ./makefile \
+&& make \
+&& cp ./openmx $SCRATCH/openmx \
+&& cd ../../ \
+&& rm -rf openmx* patch* 
 
-# # torch.
+# lammps. 
+RUN cd /app \
+&& wget -O lammps.tar.gz https://github.com/lammps/lammps/archive/refs/tags/stable_29Aug2024_update2.tar.gz \
+&& tar -xzvf lammps.tar.gz && mv lammps-* lammps \
+&& cd lammps \
+&& mkdir -p build \
+&& cmake -S ./cmake -B build -DCMAKE_INSTALL_PREFIX=$SCRATCH -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpic++ -DCMAKE_Fortran_COMPILER=mpif90 \
+&& cmake --build build -j8 \
+&& cmake --install build \
+&& cd ../ \
+&& rm -rf lammps* 
+
+# bgw, bgwpy, bgwtools. 
+COPY arch_gcc_cpu.mk /app/
+RUN cd /app \
+# Below link obtained from berkeleygw.org website. 
+&& wget -O bgw.tar.gz https://app.box.com/shared/static/22edl07muvhfnd900tnctsjjftbtcqc4.gz \
+&& tar -xzvf bgw.tar.gz && mv BerkeleyGW* bgw \
+&& cd bgw \
+&& cp ../arch_gcc_cpu.mk ./arch.mk \
+&& make all-flavors -j8 \
+&& make install INSTDIR=$SCRATCH \
+&& cd .. \
+&& rm -rf arch* bgw* 
+# # bgwpy, bgwtools. 
+# && git clone https://github.com/BerkeleyGW/BGWpy.git && mv BGWpy bgwpy \
+# && git clone https://github.com/BerkeleyGW/bgwtools.git \
+# && cd bgwpy \
+# && conda activate \
+# && pip install . \
+# && cd .. \
+# && cd bgwtools \
+# && pip install . \
+# && cd .. \
+# && rm -rf bgw* 
+
+# yambo, yambopy. 
+RUN cd /app \
+&& wget -O yambo.tar.gz https://github.com/yambo-code/yambo/archive/refs/tags/5.3.0.tar.gz \
+&& tar -xzvf yambo.tar.gz && mv yambo-* yambo \
+&& cd yambo \
+&& ./configure --prefix=$SCRATCH \
+  --with-mpi-path=$SCRATCH \
+  --enable-mpi \
+  --enable-open-mp \
+  --enable-par-linalg \
+  --enable-slepc-linalg \
+  --with-blas-libs="-L$SCRATCH/lib -lopenblas -lmpifort -lmpi" \
+  --with-lapack-libs="-L$SCRATCH/lib -lopenblas  -lmpifort -lmpi" \
+  --with-blacs-libs="-L$SCRATCH/lib -lscalapack -lopenblas  -lmpifort -lmpi" \
+  --with-scalapack-libs="-L$SCRATCH/lib -lscalapack -lopenblas  -lmpifort -lmpi" \
+  --with-petsc-path=$SCRATCH \
+  --with-slepc-path=$SCRATCH \
+  --with-fft-path=$SCRATCH \
+  --with-hdf5-path=$SCRATCH \
+  --with-netcdf-path=$SCRATCH \
+  --with-netcdff-path=$SCRATCH \
+  --with-libxc-path=$SCRATCH \
+  --with-libxc-includedir=$SCRATCH/include \
+  --with-libxc-libdir=$SCRATCH/lib \
+  --with-libxc-libs="-L$SCRATCH/lib -llxcf90 -lxcf03 -lxc  -lmpifort -lmpi" \
+&& make all -j6 \
+&& cd ../ \
+&& rm -rf yambo* \
+# yambopy.
+&& wget -O yambopy.tar.gz https://github.com/yambo-code/yambopy/archive/refs/tags/v0.4.0.tar.gz \
+&& tar -xzvf yambopy.tar.gz && mv yambopy-* yambopy \
+&& cd yambopy \
+&& conda activate \
+&& pip install . \
+&& cd .. \
+&& rm -rf yambopy* 
+
+# # torch: from source. 
 # # Frontera: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx CMAKE_CXX_FLAGS="-fstack-protector" MAX_JOBS=8 USE_MPI=1 USE_CUDA=0 USE_FBGEMM=0 BUILD_TEST=OFF python3 setup.py develop
 # # Perlmutter: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx MAX_JOBS=16 USE_CUDA=1 USE_DISTRIBUTED=1 USE_MPI=1 USE_SYSTEM_NCCL=1 BUILD_TEST=0 USE_NNPACK=0 USE_QNNPACK=0 USE_PYTORCH_QNNPATCK=0 USE_XNNPACK=0 python3 setup.py develop
 # RUN cd /app \
-# && source ~/.bashrc \
 # && git clone --recursive https://github.com/pytorch/pytorch.git 
 # RUN cd /app \
 # && cd pytorch \
 # && pip3 install -r requirements.txt \
-# && export CMAKE_PREFIX_PATH=/root/miniconda \
+# && export CMAKE_PREFIX_PATH=$CONDA_ROOT \
 # && USE_CUDA=0 USE_MPI=1 MAX_JOBS=2 python3 setup.py develop  
+# # && USE_CUDA=1 USE_MPI=1 MAX_JOBS=2 python3 setup.py develop  
+# # && USE_ROCM=1 USE_MPI=1 MAX_JOBS=2 python3 setup.py develop  
 
-# # torchvision. 
+# # torchvision: from source. 
 # # Perlmutter: CC=mpicc CXX=mpicxx MAX_JOBS=16 python3 setup.py install
 # RUN cd /app \
-# && source ~/.bashrc \
 # && git clone https://github.com/pytorch/vision.git \
 # && cd vision \
 # && MAX_JOBS=2 python3 setup.py install  \
 # && cd .. && rm -rf vision 
 
-# torch_geometric.
-RUN cd /app \
-&& source ~/.bashrc \
-&& pip3 install torch_geometric 
+# # torch_geometric, pyg_lib, torch_cluster: from source?
+# RUN cd /app \
+# && pip3 install torch_geometric \
+# && pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.2.0+cpu.html 
 
-# pyg_lib, torch_cluster, e3nn.
+# scikit-learn, joblib, xgboost. 
+# torch, torchvision, torchaudio, torch_geometric, torch_cluster, lightning, tensorly. 
+# tensorboard, torchserve. 
+# transformers, accelerate, evaluate, diffusers, e3nn. 
 RUN cd /app \
-&& source ~/.bashrc \
-# && pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.2.0+cpu.html \
-&& pip3 install torch_cluster \
-&& pip3 install e3nn 
+&& apt install -y ffmpeg \
+&& conda activate \
+&& pip3 install scikit-learn joblib xgboost \
+&& pip3 install torch torchvision torchaudio torch_geometric torch_cluster \
+&& pip3 install lightning tensorly \
+&& pip3 install tensorboard torch-serve torch-model-archiver \
+&& pip3 install transformers accelerate evaluate diffusers e3nn
 
-# transformers, datasets, evaluate, accelerate.
+# gui, plotting: ffmpeg, matplotlib, seaborn, vtk, pyvista[qt], pyvistaqt. 
 RUN cd /app \
-&& source ~/.bashrc \
-&& pip3 install transformers datasets accelerate evaluate 
+&& conda activate \
+&& conda install -y -c conda-forge vtk  \
+&& pip3 install matplotlib seaborn vtk pyvista[qt] pyvistaqt 
 
-# Tier 1 packages.
-RUN cd \app \
-&& source ~/.bashrc \
-&& pip3 install jax scipy sympy pandas networkx lark \
-# pip3 install pyqt6 vtk
-&& apt install -y libgtk-4-dev \
-# && pip3 install pygobject \
-&& pip3 install matplotlib seaborn pyvista[all] pyvistaqt \
-&& pip3 install ase pymatgen mp_api astropy dill pyyaml xmltodict jupyterlab
-
-# Tier 2 packages.
+# data and io libraries python:
+# dask, lark, pywavelets, networkx. 
+# dill, pyyaml, xmltodict, sqlite, jupyterlab, fastapi, pyopengl. 
 RUN cd /app \
-&& source ~/.bashrc \
+&& conda activate \
 && pip3 install dask[complete] dask_mpi \
-&& pip3 install scikit-learn joblib xgboost lightning tensorboard torchserve torch-model-archiver \
-&& mamba install -y gmsh \
-&& mamba create -y -n dolfinx-env python=3.12 fenics-dolfinx \
-# && conda create -y -n meep-env -c conda-forge python3=3.12 pymeep=*=mpi_mpich_* \
-&& pip3 install --no-deps fp-workflow xctph xctpol \
+&& pip3 install lark-parser pywavelets networkx dill pyyaml xmltodict sqlite \
+&& pip3 install jupyterlab fastapi \
+&& pip3 install pyopengl --no-build-isolation 
+
+# fp libraries:
+# ase, gpaw, qutip, astropy, deephpack, hpro, pyscf.  
+COPY ./siteconfig_testing.py ./DeepH-pack.tar.gz ./HPRO.tar.gz /app/
+RUN cd /app \
+&& conda activate \
+&& pip3 install ase gpaw qutip astropy \
 && pip3 install --prefer-binary pyscf \
-&& pip3 install pyopengl --no-build-isolation \
-&& pip3 install fastapi \
-&& pip3 install awscli \
-&& conda update -y sqlite
-
-# Jupyer R support.
-RUN cd /app \
-&& source ~/.bashrc \
-&& apt update -y \
-&& DEBIAN_FRONTEND=noninteractive apt install -y r-base \
-&& Rscript -e "install.packages('IRkernel', repos='https://cloud.r-project.org/')" \
-&& Rscript -e "IRkernel::installspec(user = FALSE)"
-
-# gmsh.
-RUN cd /app \
-&& source ~/.bashrc \
-&& mamba install -y gmsh 
-
-# deephpack.
-RUN cd /app \
-&& echo -e "\nexport PATH=~/.cargo/bin:\$PATH\n" >> ~/.bashrc \
-&& source ~/.bashrc \
+# deephpack. 
 && pip3 install pathos \ 
 && apt update -y && apt install -y cargo \
 && cargo install juliaup --locked \
@@ -437,17 +518,27 @@ RUN cd /app \
   Pkg.add("StaticArrays"); \
   Pkg.add("LinearMaps"); \
   Pkg.add("Pardiso");' \
-&& git clone https://github.com/mzjb/DeepH-pack.git \
-&& cd DeepH-pack \
+&& tar -xzvf DeepH-pack.tar.gz && cd DeepH-pack \
 && pip3 install . \
 && cd .. \
-&& rm -rf DeepH-pack 
+&& rm -rf DeepH-pack* \
+# hpro. 
+&& tar-xzvf HPRO.tar.gz && cd HPRO/src \
+&& pip3 install . \
+&& cd ../../ \
+&& rm -rf HPRO* \
+# gpaw. 
+&& cd /app \
+&& git clone https://gitlab.com/gpaw/gpaw.git \
+&& cd gpaw \
+&& cp ../siteconfig_testing.py ./siteconfig.py \
+&& pip3 install . \
+&& cd .. \
+&& rm -rf siteconfig* gpaw* \
+&& yes | gpaw install-data /root/gpaw-data 
+ENV PATH="~/.cargo:$PATH"
 
-# hpro. Package for pw to radial basis. 
+# fix e3nn. 
 RUN cd /app \
-&& source ~/.bashrc \
-&& git clone https://github.com/Xiaoxun-Gong/HPRO.git \
-&& cd HPRO/src \
-&& pip3 install . \
-&& cd .. \
-&& rm -rf HPRO 
+&& conda activate \
+&& pip3 install --force-reinstall --no-deps --no-cache e3nn 

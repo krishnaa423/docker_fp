@@ -1,0 +1,62 @@
+FROM ubuntu:22.04
+
+# Dockerfile variables.
+ENV BASH_ENV=~/.bashrc
+ENV SHELL=/bin/bash
+ENV TZ=Etc/UTC
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+# Common.
+RUN mkdir -p /app \
+&& apt update  \
+&& apt install -y \
+  build-essential \ 
+  software-properties-common \
+  libssl-dev \
+  bison \
+  flex \
+  nasm \ 
+  gfortran \ 
+  python3 \
+  python3-pip \
+  cmake \ 
+  cmake-curses-gui \ 
+  ninja-build \
+  meson \
+  autoconf \ 
+  libtool \ 
+  pkg-config \ 
+  wget \ 
+  curl \ 
+  vim \ 
+  git \ 
+  libgl1-mesa-dev \ 
+  libglu1-mesa-dev \ 
+  libgl1-mesa-glx \
+  libgtk-4-dev libgirepository1.0-dev libcairo2-dev gir1.2-glib-2.0 \
+  qt6-base-dev qt6-tools-dev qt6-tools-dev-tools \
+  tzdata \
+&& echo -e "\n\
+export SHELL="/usr/bin/bash" \n\
+export SCRATCH="/usr/local" \n\
+export PATH="\$SCRATCH/bin:\$PATH" \n\
+export CPATH="\$SCRATCH/include" \n\
+export LIBRARY_PATH="\$SCRATCH/lib" \n\
+export LD_LIBRARY_PATH="\$SCRATCH/lib" \n\
+PS1=\"\\[\\033[1;32m\\]\\u@\\h \\[\\033[1;34m\\]\\w \\[\\033[1;31m\\]\\$ \\[\\033[0m\\] \"\n\
+" > ~/.bashrc 
+
+# miniconda.
+RUN cd /app \
+&& source ~/.bashrc \
+&& wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh \
+&& chmod u+x *.sh \
+&& ./miniconda.sh -b -p $HOME/miniconda \
+&& $HOME/miniconda/bin/conda init \
+&& rm -rf miniconda.sh 
+RUN cd /app \
+&& source ~/.bashrc \
+&& conda config --add channels conda-forge \
+&& conda config --set channel_priority strict \
+&& conda install -y mamba 

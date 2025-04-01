@@ -6,6 +6,13 @@ services:
       dockerfile: ./Dockerfile_gcc_arm64
       platforms:
         - linux/arm64
+  fp-base-arm64:
+    image: krishnaa42342/fp:base-arm64
+    build:
+      context: ./
+      dockerfile: ./Dockerfile_base_arm64
+      platforms:
+        - linux/arm64
   fp-intelhpc-amd64:
     image: krishnaa42342/fp:intelhpc-amd64
     build:
