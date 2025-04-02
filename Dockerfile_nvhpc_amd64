@@ -142,7 +142,7 @@ RUN cd /app \
 && wget -O zlib.tar.gz https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
 && tar -xzvf zlib.tar.gz && mv zlib-* zlib \
 && cd zlib \
-&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH \
+&& CC=mpicc CXX=mpic++ FC=mpif90 CFLAGS="-fPIC" CXXFLAGS="-fPIC" FCFLAGS="-fPIC" ./configure --prefix=$SCRATCH \
 && make -j8 && make install \
 && cd .. \
 && rm -rf zlib*
@@ -153,11 +153,19 @@ RUN cd /app \
 && tar -xzvf hdf5.tar.gz && mv hdf5-* hdf5 \
 && cd hdf5 \
 && mkdir build \
-&& cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$SCRATCH -DHDF5_BUILD_FORTRAN=ON -DHDF5_ENABLE_PARALLEL=ON -DHDF5_ENABLE_ZLIB_SUPPORT=ON \
+&& cmake -S . -B build \
+  -DCMAKE_INSTALL_PREFIX=$SCRATCH \
+  -DCMAKE_C_COMPILER=mpicc \
+  -DCMAKE_CXX_COMPILER=mpic++ \
+  -DCMAKE_Fortran_COMPILER=mpif90 \
+  -DHDF5_BUILD_FORTRAN=ON \
+  -DHDF5_ENABLE_PARALLEL=ON \
+  -DHDF5_ENABLE_ZLIB_SUPPORT=ON \
 && cmake --build build \
 && cmake --install build \
 && cd .. \
 && rm -rf hdf5* \
+&& conda activate \
 && CC=mpicc HDF5_MPI="ON" HDF5_DIR="$SCRATCH"  pip3 install --no-binary=h5py h5py
 
 # qe, west, westpy.
@@ -178,7 +186,7 @@ RUN cd /app \
     --with-cuda-runtime=$CUDA_VER \
     --enable-debug \
 && cp /app/qe_nvhpc_gpu_make.inc /app/qe/make.inc \
-&& make all -j8 || true && make all -j8 && make epw -j8 \
+&& make all -j8 || true && make all -j8 \
 # west.
 && wget -O West.tar.gz https://github.com/west-code-development/West/archive/refs/tags/v6.2.0.tar.gz \
 && tar -xzvf West.tar.gz && mv West-* West \

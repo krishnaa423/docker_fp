@@ -38,7 +38,7 @@ LAPACKLIB = ${NVHPC_ROOT}/compilers/lib/liblapack.a ${NVHPC_ROOT}/compilers/lib/
 # LAPACKLIB = ${SCRATCH_NVHPC_GPU}/lib/libopenblas.a
 
 HDF5_LDIR    =  ${SCRATCH_NVHPC_GPU}/lib
-HDF5LIB      =  $(HDF5_LDIR)/libhdf5hl_fortran.a \
+HDF5LIB      =  $(HDF5_LDIR)/libhdf5_hl_fortran.a \
                 $(HDF5_LDIR)/libhdf5_hl.a \
                 $(HDF5_LDIR)/libhdf5_fortran.a \
                 $(HDF5_LDIR)/libhdf5.a \
