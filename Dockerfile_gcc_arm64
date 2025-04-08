@@ -65,17 +65,17 @@ RUN mkdir -p /app \
 
 # miniconda. 
 RUN cd /app \
-&& wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+&& wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh \
 && chmod +x miniconda.sh \
 && bash miniconda.sh -b -p $CONDA_ROOT \
-&& $HOME/miniconda/bin/conda init \
+&& $CONDA_ROOT/bin/conda init \
 && rm -rf miniconda.sh 
 
 # common python. 
 RUN cd /app \
 && ln -sf /usr/bin/python3 /usr/bin/python \
 && ln -sf /usr/bin/pip3 /usr/bin/pip \
-&& conda activate \
+&& source ~/.bashrc \
 && pip3 install cmake ninja cython
 
 # cmake. 
@@ -102,7 +102,7 @@ RUN cd /app \
 RUN cd /app \
 && source ~/.bashrc \
 && wget -O openblas.tar.gz https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.29/OpenBLAS-0.3.29.tar.gz \
-&& tar-xzvf openblas.tar.gz && mv OpenBLAS-* openblas \
+&& tar -xzvf openblas.tar.gz && mv OpenBLAS-* openblas \
 && cd openblas \
 && make USE_OPENMP=1 COMMON_OPT="-fPIC" -j8 \
 && make install PREFIX=$SCRATCH \
@@ -111,7 +111,7 @@ RUN cd /app \
 
 # numpy, jax, xarray, pandas, scipy, sympy. 
 RUN cd /app \
-&& conda activate \
+&& source ~/.bashrc \
 && pip3 install numpy jax xarray pandas scipy sympy 
 
 # mpich, mpi4py. 
@@ -124,7 +124,7 @@ RUN cd /app \
 && make -j8 && make install \
 && cd .. \
 && rm -rf mpich* \
-&& conda activate \
+&& source ~/.bashrc \
 && MPICC=mpicc CC=gcc pip3 install --no-binary=mpi4py mpi4py==4.0.0
 
 # scalapack. 
@@ -193,7 +193,7 @@ RUN cd /app \
 && cmake --install build \
 && cd .. \
 && rm -rf hdf5* \
-&& conda activate \
+&& source ~/.bashrc \
 && CC=mpicc HDF5_MPI="ON" HDF5_DIR="$SCRATCH"  pip3 install --no-binary=h5py h5py
 
 # netcdf-c, netcdf-fortran, ncpy. 
@@ -217,13 +217,14 @@ RUN cd /app \
 && cd .. \
 && rm -rf netcdf-fortran* \
 # netcdf-python. 
-&& wget -O netcdf4-python.tar.gz https://github.com/Unidata/netcdf4-python/archive/refs/tags/v1.7.1.post1.tar.gz \
-&& tar -xzvf netcdf4-python.tar.gz && mv netcdf4-python-* netcdf4-python \
-&& cd netcdf4-python \
-&& conda activate \
-&& pip3 install -v . \
-&& cd .. \
-&& rm -rf netcdf4-python*
+&& pip install netCDF4 
+# && wget -O netcdf4-python.tar.gz https://github.com/Unidata/netcdf4-python/archive/refs/tags/v1.7.1.post1.tar.gz \
+# && tar -xzvf netcdf4-python.tar.gz && mv netcdf4-python-* netcdf4-python \
+# && cd netcdf4-python \
+# && source ~/.bashrc \
+# && pip3 install -v . \
+# && cd .. \
+# && rm -rf netcdf4-python*
 
 # petsc, slepc, petsc4py, slepc4py. 
 RUN cd /app \
@@ -249,7 +250,7 @@ RUN cd /app \
 && wget -O petsc4py.tar.gz https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc4py-3.22.4.tar.gz \
 && tar -xzvf petsc4py.tar.gz && mv petsc4py-* petsc4py \
 && cd petsc4py \
-&& conda activate \
+&& source ~/.bashrc \
 && CC=mpicc CXX=mpic++ FC=mpif90 PETSC_DIR=$SCRATCH pip3 install . \
 && cd .. \
 && rm -rf petsc4py* \
@@ -295,7 +296,7 @@ RUN cd /app \
 && wget -O westpy.tar.gz https://github.com/west-code-development/westpy/archive/refs/tags/v6.2.0.tar.gz \
 && tar -xzvf westpy.tar.gz && mv westpy-* westpy \
 && cd westpy \
-&& conda activate \
+&& source ~/.bashrc \
 && pip install . \
 && cd .. \
 && cp ./kmesh.pl $SCRATCH/bin/kmesh.pl \
@@ -326,7 +327,7 @@ RUN cd /app \
 && wget -O abipy.tar.gz https://github.com/abinit/abipy/archive/refs/tags/0.9.8.tar.gz \
 && tar -xzvf abipy.tar.gz && mv abipy-* abipy \
 && cd abipy \
-&& conda activate \
+&& source ~/.bashrc \
 && pip install . \
 && cd .. \
 && rm -rf abipy*
@@ -414,7 +415,7 @@ RUN cd /app \
 # && git clone https://github.com/BerkeleyGW/BGWpy.git && mv BGWpy bgwpy \
 # && git clone https://github.com/BerkeleyGW/bgwtools.git \
 # && cd bgwpy \
-# && conda activate \
+# && source ~/.bashrc \
 # && pip install . \
 # && cd .. \
 # && cd bgwtools \
@@ -454,7 +455,7 @@ RUN cd /app \
 && wget -O yambopy.tar.gz https://github.com/yambo-code/yambopy/archive/refs/tags/v0.4.0.tar.gz \
 && tar -xzvf yambopy.tar.gz && mv yambopy-* yambopy \
 && cd yambopy \
-&& conda activate \
+&& source ~/.bashrc \
 && pip install . \
 && cd .. \
 && rm -rf yambopy* 
@@ -491,16 +492,18 @@ RUN cd /app \
 # transformers, accelerate, evaluate, diffusers, e3nn. 
 RUN cd /app \
 && apt install -y ffmpeg \
-&& conda activate \
+&& source ~/.bashrc \
 && pip3 install scikit-learn joblib xgboost \
-&& pip3 install torch torchvision torchaudio torch_geometric torch_cluster \
+&& pip3 install torch torchvision torchaudio torch_geometric \
+&& pip install torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.2.0+cpu.html \
 && pip3 install lightning tensorly \
-&& pip3 install tensorboard torch-serve torch-model-archiver \
+&& pip3 install tensorboard \
+# && pip3 torch-serve torch-model-archiver \
 && pip3 install transformers accelerate evaluate diffusers e3nn
 
 # gui, plotting: ffmpeg, matplotlib, seaborn, vtk, pyvista[qt], pyvistaqt. 
 RUN cd /app \
-&& conda activate \
+&& source ~/.bashrc \
 && conda install -y -c conda-forge vtk  \
 && pip3 install matplotlib seaborn vtk pyvista[qt] pyvistaqt 
 
@@ -508,18 +511,20 @@ RUN cd /app \
 # dask, lark, pywavelets, networkx. 
 # dill, pyyaml, xmltodict, sqlite, jupyterlab, fastapi, pyopengl. 
 RUN cd /app \
-&& conda activate \
+&& source ~/.bashrc \
 && pip3 install dask[complete] dask_mpi \
-&& pip3 install lark-parser pywavelets networkx dill pyyaml xmltodict sqlite \
+&& pip3 install lark-parser pywavelets networkx dill pyyaml xmltodict \
+# && pip3 install sqlite \
 && pip3 install jupyterlab fastapi \
 && pip3 install pyopengl --no-build-isolation 
 
 # fp libraries:
 # ase, gpaw, qutip, astropy, deephpack, hpro, pyscf.  
+ENV PATH="/root/.cargo/bin:$PATH"
 COPY ./siteconfig_testing.py ./DeepH-pack.tar.gz ./HPRO.tar.gz /app/
 RUN cd /app \
-&& conda activate \
-&& pip3 install ase gpaw qutip astropy \
+&& source ~/.bashrc \
+&& pip3 install ase qutip astropy \
 && pip3 install --prefer-binary pyscf \
 # deephpack. 
 && pip3 install pathos \ 
@@ -541,22 +546,23 @@ RUN cd /app \
 && cd .. \
 && rm -rf DeepH-pack* \
 # hpro. 
-&& tar-xzvf HPRO.tar.gz && cd HPRO/src \
+&& tar -xzvf HPRO.tar.gz && cd HPRO/src \
 && pip3 install . \
 && cd ../../ \
 && rm -rf HPRO* \
 # gpaw. 
 && cd /app \
-&& git clone https://gitlab.com/gpaw/gpaw.git \
-&& cd gpaw \
+&& wget -O gpaw.tar.gz https://files.pythonhosted.org/packages/2f/d8/b93adc173514823d4c2c4756eb4be77bcd009604dfbbabc8b7d0ce420f55/gpaw-25.1.0.tar.gz#sha256=80236e779784df3317e7da395dc59ea403bc0213bb3a68d02c17957162e972ea \
+&& tar -xzvf gpaw.tar.gz && mv gpaw-* gpaw && cd gpaw \
 && cp ../siteconfig_testing.py ./siteconfig.py \
 && pip3 install . \
 && cd .. \
 && rm -rf siteconfig* gpaw* \
-&& yes | gpaw install-data /root/gpaw-data 
-ENV PATH="~/.cargo:$PATH"
-
+&& yes | gpaw install-data /root/gpaw-data \
 # fix e3nn. 
-RUN cd /app \
-&& conda activate \
 && pip3 install --force-reinstall --no-deps --no-cache e3nn 
+
+# physics packages: dolfinx. 
+RUN cd /app \
+&& source ~/.bashrc \
+&& conda create -y -c conda-forge -n dolfinx-env python=3.10 fenics-dolfinx 
