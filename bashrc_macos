@@ -1,0 +1,13 @@
+PS1="\[\033[1;32m\]\u@\h \[\033[1;34m\]\w \[\033[1;31m\]\$ \[\033[0m\]"
+
+
+
+export PATH="/opt/homebrew/bin:$PATH"
+alias cds="cd /Users/krishnaa/Documents/Programming"
+alias cup="conda deactivate && conda activate"
+
+export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+export CPATH="/usr/local/include:/opt/homebrew/include"
+export LIBRARY_PATH="/usr/local/lib:/opt/homebrew/lib"
+export LD_LIBRARY_PATH="/usr/local/lib:/opt/homebrew/lib"
+

@@ -409,8 +409,8 @@ RUN cd /app \
 && cp ../arch_gcc_cpu.mk ./arch.mk \
 && make all-flavors -j8 \
 && make install INSTDIR=$SCRATCH \
-&& cd .. \
-&& rm -rf arch* bgw* 
+&& cd .. \ 
+&& rm -rf arch* bgw*
 # # bgwpy, bgwtools. 
 # && git clone https://github.com/BerkeleyGW/BGWpy.git && mv BGWpy bgwpy \
 # && git clone https://github.com/BerkeleyGW/bgwtools.git \
@@ -499,6 +499,7 @@ RUN cd /app \
 && pip3 install lightning tensorly \
 && pip3 install tensorboard \
 # && pip3 torch-serve torch-model-archiver \
+&& pip3 install tensorflow \
 && pip3 install transformers accelerate evaluate diffusers e3nn
 
 # gui, plotting: ffmpeg, matplotlib, seaborn, vtk, pyvista[qt], pyvistaqt. 
@@ -559,6 +560,8 @@ RUN cd /app \
 && cd .. \
 && rm -rf siteconfig* gpaw* \
 && yes | gpaw install-data /root/gpaw-data \
+# deepmd. 
+&& pip3 install deepmd-kit \
 # fix e3nn. 
 && pip3 install --force-reinstall --no-deps --no-cache e3nn 
 
