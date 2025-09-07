@@ -129,6 +129,7 @@ RUN source ~/.bashrc && source ~/set_nvhpc_gpu.sh \
     --disable-sse --disable-sse-assembly \
     --disable-avx --disable-avx2 --disable-avx512 \
     --disable-shared \
+    --enable-c-tests=no \
 && make -j8 && make install \
 && cd .. \
 && rm -rf elpa elpa.tar.gz \

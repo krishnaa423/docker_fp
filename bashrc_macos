@@ -11,3 +11,8 @@ export CPATH="/usr/local/include:/opt/homebrew/include"
 export LIBRARY_PATH="/usr/local/lib:/opt/homebrew/lib"
 export LD_LIBRARY_PATH="/usr/local/lib:/opt/homebrew/lib"
 
+
+# # For docker. 
+# alias cdoc="docker container run --rm -it -v ./:/scratch -w /scratch --name fp-testing krishnaa42342/fp:gcc-arm64 /bin/bash"
+# alias abacus="docker run --rm -v ./:/scratch -w /scratch krishnaa42342/fp:gcc-arm64 abacus "
+# alias siesta="docker run --rm -v ./:/scratch -w /scratch krishnaa42342/fp:gcc-arm64 siesta "

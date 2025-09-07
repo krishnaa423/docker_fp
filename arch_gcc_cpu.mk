@@ -12,8 +12,8 @@ MATHFLAG  = -DUSESCALAPACK -DUNPACKED -DUSEFFTW3 -DHDF5 -DUSEELPA
 
 # Compiler flags. 
 FCPP    = cpp -C -nostdinc
-F90free = mpif90 -ffree-form -ffree-line-length-none -fno-second-underscore -fopenmp
-LINK    = mpif90 -fopenmp
+F90free = mpif90 -ffree-form -ffree-line-length-none -fno-second-underscore -fopenmp -fallow-argument-mismatch
+LINK    = mpif90 -fopenmp -fallow-argument-mismatch
 FOPTS   = -O0 -g
 FNOOPTS = $(FOPTS)
 MOD_OPT = -J

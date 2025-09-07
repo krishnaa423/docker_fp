@@ -26,8 +26,8 @@ CDEFS         = -DAdd_
 #  The fortran and C compilers, loaders, and their flags
 #
 
-FC            = mpif90
-CC            = mpicc 
+FC            = mpif90 -fPIC
+CC            = mpicc -fPIC
 NOOPT         = -O0
 FCFLAGS       = -O3
 CCFLAGS       = -O3

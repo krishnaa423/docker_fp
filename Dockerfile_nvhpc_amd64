@@ -118,6 +118,8 @@ RUN cd /app \
     # --disable-sse-assembly \
     --disable-avx --disable-avx2 --disable-avx512 \
     --disable-shared \
+    --disable-c-tests \
+    --disable-cpp-tests \
 && make -j8 && make install \
 && ln -sf $SCRATCH/include/elpa-*/elpa $SCRATCH/include/elpa \
 && cp $SCRATCH/include/elpa-*/modules/* $SCRATCH/include/ \
@@ -135,48 +137,45 @@ RUN cd /app \
 && CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH CFLAGS="-fPIC" FCFLAGS="-fPIC" --enable-shared --enable-openmp --enable-mpi --enable-single \
 && make -j8 && make install \
 && cd .. \
-&& rm -rf fftw3* 
-
-# zlib. 
-RUN cd /app \
-&& wget -O zlib.tar.gz https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
-&& tar -xzvf zlib.tar.gz && mv zlib-* zlib \
-&& cd zlib \
-&& CC=mpicc CXX=mpic++ FC=mpif90 CFLAGS="-fPIC" CXXFLAGS="-fPIC" FCFLAGS="-fPIC" ./configure --prefix=$SCRATCH \
-&& make -j8 && make install \
+&& rm -rf fftw3* \
+# mpi4py-fftw
+&& git clone https://github.com/mpi4py/mpi4py-fft.git \
+&& cd mpi4py-fft \
+&& source ~/.bashrc \
+&& MPICC=mpicc FFTW_DIR=/usr/local CFLAGS="-I/usr/local/include $CFLAGS" LDFLAGS="-L/usr/local/lib $LDFLAGS" pip install -v . \
 && cd .. \
-&& rm -rf zlib*
+&& rm -rf mpi4py-fft
+
+# # zlib. 
+# RUN cd /app \
+# && wget -O zlib.tar.gz https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
+# && tar -xzvf zlib.tar.gz && mv zlib-* zlib \
+# && cd zlib \
+# && CC=mpicc CXX=mpic++ FC=mpif90 CFLAGS="-fPIC" CXXFLAGS="-fPIC" FCFLAGS="-fPIC" ./configure --prefix=$SCRATCH \
+# && make -j8 && make install \
+# && cd .. \
+# && rm -rf zlib*
 
 # hdf5, h5py. 
 RUN cd /app \
 && wget -O hdf5.tar.gz https://github.com/HDFGroup/hdf5/archive/refs/tags/hdf5_1.14.6.tar.gz \
 && tar -xzvf hdf5.tar.gz && mv hdf5-* hdf5 \
 && cd hdf5 \
-&& mkdir build \
-&& cmake -S . -B build \
-  -DCMAKE_INSTALL_PREFIX=$SCRATCH \
-  -DCMAKE_C_COMPILER=mpicc \
-  -DCMAKE_CXX_COMPILER=mpic++ \
-  -DCMAKE_Fortran_COMPILER=mpif90 \
-  -DHDF5_BUILD_FORTRAN=ON \
-  -DHDF5_ENABLE_PARALLEL=ON \
-  -DHDF5_ENABLE_ZLIB_SUPPORT=ON \
-&& cmake --build build \
-&& cmake --install build \
+&& CC=mpicc FC=mpif90 ./configure --prefix=$SCRATCH --enable-fortran --enable-parallel  \
+&& make -j8 && make install \
 && cd .. \
 && rm -rf hdf5* \
 && conda activate \
-&& CC=mpicc HDF5_MPI="ON" HDF5_DIR="$SCRATCH"  pip3 install --no-binary=h5py h5py
+&& CC=mpicc CFLAGS="-noswitcherror" HDF5_MPI="ON" HDF5_DIR="$SCRATCH"  pip3 install --no-binary=h5py h5py --no-cache-dir --force 
 
-# qe, west, westpy.
-COPY ./kmesh.pl ./qe_nvhpc_gpu_make.inc ./qe_nvhpc_cpu_make.inc /app/
+# qe. 
+COPY ./kmesh.pl ./qe_nvhpc_gpu_make.inc /app/
 RUN cd /app \
 && source ~/.bashrc \
 # qe gpu. 
 && wget -O qe.tar.gz https://gitlab.com/QEF/q-e/-/archive/qe-7.3.1/q-e-qe-7.3.1.tar.gz \
-&& tar -xzvf qe.tar.gz && mv q-e-* qe \
-&& tar -xzvf qe.tar.gz && mv q-e-* qe-cpu \
-&& cd qe \
+&& tar -xzvf qe.tar.gz && mv q-e-* qe-gpu \
+&& cd qe-gpu \
 && CC=mpicc CXX=mpic++ FC=mpif90 ./configure \
     --prefix=$SCRATCH \
     --with-hdf5=yes \
@@ -185,53 +184,23 @@ RUN cd /app \
     --with-cuda-cc=$CUDA_CC \ 
     --with-cuda-runtime=$CUDA_VER \
     --enable-debug \
-&& cp /app/qe_nvhpc_gpu_make.inc /app/qe/make.inc \
-&& make all -j8 || true && make all -j8 \
-# west.
-&& wget -O West.tar.gz https://github.com/west-code-development/West/archive/refs/tags/v6.2.0.tar.gz \
-&& tar -xzvf West.tar.gz && mv West-* West \
-&& cd ./West \
-&& CC=mpicc F90=mpif90 MPIF90=mpif90 BLAS_LIBS="-L$SCRATCH -lopenblas" LAPACK_LIBS="-L/usr/local -lopenblas" LIBDIRS="-L$SCRATCH " make conf PYT=python3 PYT_LDFLAGS="`python3-config --ldflags --embed`" \
-&& make all -j8 \
-&& cd .. \
-&& make install \
-&& cd .. \
-# qe-cpu. 
-&& cd qe-cpu \
-&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure \
-    --prefix=$(pwd) \
-    --with-hdf5=yes \
-    --with-scalapack=yes \ 
-    #  --enable-debug \
-&& cp /app/qe_nvhpc_cpu_make.inc /app/qe-cpu/make.inc \
-&& make all -j8 || true && make all -j8 && make epw -j8 \
-&& cd .. \
-# westpy. 
-&& wget -O westpy.tar.gz https://github.com/west-code-development/westpy/archive/refs/tags/v6.2.0.tar.gz \
-&& tar -xzvf westpy.tar.gz && mv westpy-* westpy \
-&& cd westpy \
-&& pip install . \
-&& cd .. \
+&& cp /app/qe_nvhpc_gpu_make.inc /app/qe-gpu/make.inc \
+&& make all -j8 || true && make all -j8 && make install \
+&& cd ../ \
 && cp ./kmesh.pl $SCRATCH/bin/kmesh.pl \
-&& rm -rf westpy* qe qe.tar.gz kmesh.pl 
+&& rm -rf qe-gpu qe.tar.gz kmesh.pl 
 
 # bgw, bgwpy, bgwtools. 
 COPY ./arch_nvhpc_gpu.mk ./arch_nvhpc_cpu.mk /app/
 RUN cd /app \
 # Below link obtained from berkeleygw.org website. 
 && wget -O bgw.tar.gz https://app.box.com/shared/static/22edl07muvhfnd900tnctsjjftbtcqc4.gz \
-&& tar -xzvf bgw.tar.gz && mv BerkeleyGW* bgw \
-&& tar -xzvf bgw.tar.gz && mv BerkeleyGW* bgw-cpu \
+&& tar -xzvf bgw.tar.gz && mv BerkeleyGW* bgw-gpu \
 # bgw gpu. 
-&& cd bgw \
+&& cd bgw-gpu \
 && cp ../arch_nvhpc_gpu.mk ./arch.mk \
 && make all-flavors -j8 \
 && make install INSTDIR=$SCRATCH \
-&& cd .. \
-# bgw cpu. 
-&& cd bgw-cpu \
-&& cp ../arch_nvhpc_cpu.mk ./arch.mk \
-&& make all-flavors -j8 || true && make all-flavors -j8 \
 && cd .. \
 && rm -rf arch* bgw bgw.tar.gz  
 # # bgwpy, bgwtools. 
@@ -267,7 +236,7 @@ RUN cd /app \
 # dill, pyyaml, xmltodict, sqlite, jupyterlab, fastapi, pyopengl. 
 RUN cd /app \
 && pip3 install dask[complete] dask_mpi \
-&& pip3 install lark-parser pywavelets networkx dill pyyaml xmltodict sqlite \
+&& pip3 install lark-parser pywavelets networkx dill pyyaml xmltodict \
 && pip3 install jupyterlab fastapi \
 && pip3 install pyopengl --no-build-isolation 
 
@@ -275,33 +244,8 @@ RUN cd /app \
 # ase, gpaw, qutip, astropy, deephpack, hpro, pyscf.  
 COPY ./DeepH-pack.tar.gz ./HPRO.tar.gz /app/
 RUN cd /app \
-&& pip3 install ase gpaw qutip astropy \
-&& pip3 install --prefer-binary pyscf \
-# deephpack. 
-&& pip3 install pathos \ 
-&& apt update -y && apt install -y cargo \
-&& cargo install juliaup --locked \
-&& julia -e 'using Pkg; \
-  Pkg.add("Arpack"); \
-  Pkg.add("HDF5"); \
-  Pkg.add("ArgParse"); \
-  Pkg.add("JLD"); \
-  Pkg.add("JSON"); \
-  Pkg.add("IterativeSolvers"); \
-  Pkg.add("DelimitedFiles"); \
-  Pkg.add("StaticArrays"); \
-  Pkg.add("LinearMaps"); \
-  Pkg.add("Pardiso");' \
-&& tar -xzvf DeepH-pack.tar.gz && cd DeepH-pack \
-&& pip3 install . \
-&& cd .. \
-&& rm -rf DeepH-pack* \
-# hpro. 
-&& tar-xzvf HPRO.tar.gz && cd HPRO/src \
-&& pip3 install . \
-&& cd ../../ \
-&& rm -rf HPRO* 
-ENV PATH="~/.cargo:$PATH"
+&& pip3 install ase qutip astropy \
+&& pip3 install --prefer-binary pyscf 
 
 # fix e3nn. 
 RUN cd /app \

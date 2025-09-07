@@ -112,7 +112,7 @@ RUN cd /app \
 # numpy, jax, xarray, pandas, scipy, sympy. 
 RUN cd /app \
 && source ~/.bashrc \
-&& pip3 install numpy jax xarray pandas scipy sympy 
+&& pip3 install numpy jax xarray pandas scipy sympy
 
 # mpich, mpi4py. 
 RUN cd /app \
@@ -145,7 +145,7 @@ RUN cd /app \
 && tar -xzvf elpa.tar.gz && mv elpa-* elpa \
 && cd elpa \
 && ./autogen.sh \
-&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --disable-sse --disable-sse-assembly --disable-avx --disable-avx2 --disable-avx512 CFLAGS="-O3 -fPIC" LDFLAGS="-L$SCRATCH/lib" LIBS="-lscalapack -lopenblas" \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --disable-shared --disable-sse --disable-sse-assembly --disable-avx --disable-avx2 --disable-avx512 CFLAGS="-O3 -fPIC" LDFLAGS="-L$SCRATCH/lib" LIBS="-lscalapack -lopenblas" \
 && make -j8 && make install \
 && ln -sf $SCRATCH/include/elpa-*/elpa $SCRATCH/include/elpa \
 && cp $SCRATCH/include/elpa-*/modules/* $SCRATCH/include/ \
@@ -163,7 +163,14 @@ RUN cd /app \
 && CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH CFLAGS="-fPIC" FCFLAGS="-fPIC" --enable-shared --enable-openmp --enable-mpi --enable-single \
 && make -j8 && make install \
 && cd .. \
-&& rm -rf fftw3* 
+&& rm -rf fftw3* \
+# mpi4py-fftw
+&& git clone https://github.com/mpi4py/mpi4py-fft.git \
+&& cd mpi4py-fft \
+&& source ~/.bashrc \
+&& MPICC=mpicc FFTW_DIR=/usr/local CFLAGS="-I/usr/local/include $CFLAGS" LDFLAGS="-L/usr/local/lib $LDFLAGS" pip install -v . \
+&& cd .. \
+&& rm -rf mpi4py-fft
 
 # zlib. 
 RUN cd /app \
@@ -270,6 +277,7 @@ RUN cd /app \
 && autoreconf -i \
 && CC=mpicc FC=mpif90 ./configure CFLAGS="-fPIC" --prefix=$SCRATCH \
 && make -j8 && make install \
+&& pip install . \
 && cd .. \
 && rm -rf libxc* 
 
@@ -281,13 +289,14 @@ RUN cd /app \
 && wget -O qe.tar.gz https://gitlab.com/QEF/q-e/-/archive/qe-7.3.1/q-e-qe-7.3.1.tar.gz \
 && tar -xzvf qe.tar.gz && mv q-e-* qe \
 && cd qe \
-&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --with-scalapack=yes --with-elpa-include=$SCRATCH/include --with-elpa-lib=$SCRATCH/lib/libelpa.a -with-hdf5=yes --with-hdf5-include=$SCRATCH/include --with-hdf5-libs="-L$SCRATCH/lib -lhdf5_hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 -lz -ldl -lm" \
+&& CC=mpicc CXX=mpic++ FC=mpif90 ./configure --prefix=$SCRATCH --with-scalapack=yes --with-elpa-include=$SCRATCH/include --with-elpa-lib=$SCRATCH/lib/libelpa.a --with-hdf5=yes --with-hdf5-include=$SCRATCH/include --with-hdf5-libs="-L$SCRATCH/lib -lhdf5_hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 -lz -ldl -lm" \
+   --with-libxc=yes --with-libxc-prefix=$SCRATCH --with-libxc-include=$SCRATCH/include \
 && make all -j8 || true && make all -j8 && make epw -j8 \
 # west.
 && wget -O West.tar.gz https://github.com/west-code-development/West/archive/refs/tags/v6.2.0.tar.gz \
 && tar -xzvf West.tar.gz && mv West-* West \
 && cd ./West \
-&& CC=mpicc F90=mpif90 MPIF90=mpif90 BLAS_LIBS="-L$SCRATCH -lopenblas" LAPACK_LIBS="-L/usr/local -lopenblas" LIBDIRS="-L$SCRATCH " make conf PYT=python3 PYT_LDFLAGS="`python3-config --ldflags --embed`" \
+&& CC=mpicc F90=mpif90 MPIF90=mpif90 BLAS_LIBS="-L$SCRATCH -lopenblas" LAPACK_LIBS="-L$SCRATCH -lopenblas" LIBDIRS="-L$SCRATCH " make conf PYT=python3 PYT_LDFLAGS="`python3-config --ldflags --embed`" \
 && make all -j8 \
 && cd .. \
 && make install \
@@ -361,6 +370,7 @@ RUN cd /app \
 && rm -rf siesta*
 
 # abacus. 
+# Perlmutter: Comment out FindELPA.cmake:95-97. Disables ELPA version checking. 
 RUN cd /app \
 && wget -O abacus.tar.gz https://github.com/abacusmodeling/abacus-develop/archive/refs/tags/v3.9.0.tar.gz \
 && tar -xzvf abacus.tar.gz && mv abacus-develop-* abacus \
@@ -462,29 +472,37 @@ RUN cd /app \
 
 # # torch: from source. 
 # # Frontera: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx CMAKE_CXX_FLAGS="-fstack-protector" MAX_JOBS=8 USE_MPI=1 USE_CUDA=0 USE_FBGEMM=0 BUILD_TEST=OFF python3 setup.py develop
-# # Perlmutter: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpicxx MAX_JOBS=16 USE_CUDA=1 USE_DISTRIBUTED=1 USE_MPI=1 USE_SYSTEM_NCCL=1 BUILD_TEST=0 USE_NNPACK=0 USE_QNNPACK=0 USE_PYTORCH_QNNPATCK=0 USE_XNNPACK=0 python3 setup.py develop
+# # Perlmutter: CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpic++ MAX_JOBS=8 USE_CUFILE=0 USE_CUDA=1 TORCH_CUDA_ARCH_LIST=8.0 USE_CUDNN=1 USE_SYSTEM_NCCL=1 USE_DISTRIBUTED=1 USE_MPI=1 USE_SYSTEM_NCCL=1 BUILD_TEST=0 _GLIBCXX_USE_CXX11_ABI=1 USE_NNPACK=0 USE_QNNPACK=0 USE_PYTORCH_QNNPACK=0 USE_XNNPACK=0 python setup.py develop
 # RUN cd /app \
-# && git clone --recursive https://github.com/pytorch/pytorch.git 
+# && git clone https://github.com/pytorch/pytorch.git \
+# && cd pytorch \
+# && git submodule sync \
+# && git submodule update --init --recursive
 # RUN cd /app \
 # && cd pytorch \
-# && pip3 install -r requirements.txt \
+# && pip install --group dev \
 # && export CMAKE_PREFIX_PATH=$CONDA_ROOT \
-# && USE_CUDA=0 USE_MPI=1 MAX_JOBS=2 python3 setup.py develop  
-# # && USE_CUDA=1 USE_MPI=1 MAX_JOBS=2 python3 setup.py develop  
-# # && USE_ROCM=1 USE_MPI=1 MAX_JOBS=2 python3 setup.py develop  
+# && MAX_JOBS=2 CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpic++ USE_CUDA=0 USE_MPI=1 USE_DISTRIBUTED=1 USE_MPS=1 pip install --no-build-isolation -v .
+# # && MAX_JOBS=2 CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpic++ USE_CUDA=1 USE_MPI=1 USE_DISTRIBUTED=1 USE_MPS=1 pip install --no-build-isolation -v . 
+# # && MAX_JOBS=2 CMAKE_C_COMPILER=mpicc CMAKE_CXX_COMPILER=mpic++ USE_ROCM=1 USE_MPI=1 USE_DISTRIBUTED=1 USE_MPS=1 pip install --no-build-isolation -v .
 
 # # torchvision: from source. 
-# # Perlmutter: CC=mpicc CXX=mpicxx MAX_JOBS=16 python3 setup.py install
+# # Perlmutter: CC=mpicc CXX=mpicxx MAX_JOBS=8 python3 setup.py install
 # RUN cd /app \
 # && git clone https://github.com/pytorch/vision.git \
 # && cd vision \
 # && MAX_JOBS=2 python3 setup.py install  \
 # && cd .. && rm -rf vision 
 
-# # torch_geometric, pyg_lib, torch_cluster: from source?
+# # torch_geometric, pyg_lib, torch_cluster: from source. 
+# Perlmutter: CC=mpicc CXX=mpic++ TORCH_CUDA_ARCH_LIST="8.0" MAX_JOBS=8 PIP_NO_BUILD_ISOLATION=1 python -m pip install --verbose git+https://github.com/pyg-team/pytorch_geometric.git
 # RUN cd /app \
-# && pip3 install torch_geometric \
-# && pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.2.0+cpu.html 
+# && CC=mpicc CXX=mpic++ pip3 install --verbose --no-build-isolation git+https://github.com/pyg-team/pyg-lib.git \
+# && CC=mpicc CXX=mpic++ pip3 install --verbose --no-build-isolation git+https://github.com/rusty1s/pytorch_scatter.git \
+# && CC=mpicc CXX=mpic++ pip3 install --verbose --no-build-isolation git+https://github.com/rusty1s/pytorch_sparse.git \
+# && CC=mpicc CXX=mpic++ pip3 install --verbose --no-build-isolation git+https://github.com/rusty1s/pytorch_cluster.git \
+# && CC=mpicc CXX=mpic++ pip3 install --verbose --no-build-isolation git+https://github.com/rusty1s/pytorch_spline_conv.git \
+# && CC=mpicc CXX=mpic++ pip3 install --verbose --no-build-isolation git+https://github.com/pyg-team/pytorch_geometric.git
 
 # scikit-learn, joblib, xgboost. 
 # torch, torchvision, torchaudio, torch_geometric, torch_cluster, lightning, tensorly. 
@@ -498,7 +516,7 @@ RUN cd /app \
 && pip install torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.2.0+cpu.html \
 && pip3 install lightning tensorly \
 && pip3 install tensorboard \
-# && pip3 torch-serve torch-model-archiver \
+# && pip3 install torch-serve torch-model-archiver \
 && pip3 install tensorflow \
 && pip3 install transformers accelerate evaluate diffusers e3nn
 
@@ -525,7 +543,7 @@ ENV PATH="/root/.cargo/bin:$PATH"
 COPY ./siteconfig_testing.py ./DeepH-pack.tar.gz ./HPRO.tar.gz /app/
 RUN cd /app \
 && source ~/.bashrc \
-&& pip3 install ase qutip astropy \
+&& pip3 install ase qutip astropy spglib \
 && pip3 install --prefer-binary pyscf \
 # deephpack. 
 && pip3 install pathos \ 
@@ -562,6 +580,14 @@ RUN cd /app \
 && yes | gpaw install-data /root/gpaw-data \
 # deepmd. 
 && pip3 install deepmd-kit \
+# phonopy.
+&& git clone https://github.com/phonopy/phonopy.git \
+&& cd phonopy && git checkout master \
+&& pip install . -vvv \
+&& cd .. \
+&& rm -rf phonopy \
+# my fp libraries. \
+&& pip3 install fpdist fpks fpflow fpml xctph xctpol \
 # fix e3nn. 
 && pip3 install --force-reinstall --no-deps --no-cache e3nn 
 
