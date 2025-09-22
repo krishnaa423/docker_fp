@@ -1,24 +1,32 @@
 #!/bin/bash
 
-conda deactivate
+# Deactivate all active conda levels, but only if conda is on PATH
+if command -v conda >/dev/null 2>&1; then
+  while [[ ${CONDA_SHLVL:-0} -gt 1 ]]; do
+    conda deactivate
+  done
+fi
 
 
-export CUDA_VER="12.2"
-export CUDA_ROOT="/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/cuda/12.2"
-export NVHPC_VER="23.9"
+export NVHPC_VER="24.5"
+export CUDA_VER="12.4"
 export NVHPC_ROOT="/opt/nvidia/hpc_sdk/Linux_x86_64/$NVHPC_VER"
+export CUDA_ROOT="/opt/nvidia/hpc_sdk/Linux_x86_64/$NVHPC_VER/cuda/$CUDA_VER"
 
+# Set previous env vars for module load.
+export CPATH=""
+export LIBRARY_PATH=""
+export LD_LIBRARY_PATH=""
 module purge
-
-export PATH="$SCRATCH_NVHPC_GPU/bin:$MPI_NVHPC_GPU_ROOT/bin:$NVHPC_ROOT/compilers/bin:$NVHPC_ROOT/cuda/bin:$PREVIOUS_PATH"
-export CPATH="$SCRATCH_NVHPC_GPU/include:$MPI_NVHPC_GPU_ROOT/include:$NVHPC_ROOT/compilers/include:$NVHPC_ROOT/cuda/include:$NVHPC_ROOT/math_libs/include"
-export LIBRARY_PATH="$SCRATCH_NVHPC_GPU/lib:$MPI_NVHPC_GPU_ROOT/lib:$NVHPC_ROOT/compilers/lib:$NVHPC_ROOT/cuda/lib64:$NVHPC_ROOT/cuda/lib64/stubs:$NVHPC_ROOT/math_libs/lib64"
-export LD_LIBRARY_PATH="$SCRATCH_NVHPC_GPU/lib:$MPI_NVHPC_GPU_ROOT/lib:$NVHPC_ROOT/compilers/lib:$NVHPC_ROOT/cuda/lib64:$NVHPC_ROOT/cuda/lib64/stubs:$NVHPC_ROOT/math_libs/lib64"
-
-module load PrgEnv-nvidia 
-module load cray-mpich 
-module load cudatoolkit 
+module load PrgEnv-nvidia/8.5.0 
+module load cray-mpich/8.1.30
+module load cudatoolkit/12.4
 module load craype-accel-nvidia80
+
+export PATH="$SCRATCH_NVHPC_GPU/bin:$MPI_NVHPC_GPU_ROOT/bin:$NVHPC_ROOT/compilers/bin:$NVHPC_ROOT/cuda/bin:$PATH"
+export CPATH="$SCRATCH_NVHPC_GPU/include:$MPI_NVHPC_GPU_ROOT/include:$NVHPC_ROOT/compilers/include:$NVHPC_ROOT/cuda/include:$NVHPC_ROOT/math_libs/include:$CPATH"
+export LIBRARY_PATH="$SCRATCH_NVHPC_GPU/lib:$MPI_NVHPC_GPU_ROOT/lib:$NVHPC_ROOT/compilers/lib:$NVHPC_ROOT/cuda/lib64:$NVHPC_ROOT/cuda/lib64/stubs:$NVHPC_ROOT/math_libs/lib64"
+export LD_LIBRARY_PATH="$SCRATCH_NVHPC_GPU/lib:$MPI_NVHPC_GPU_ROOT/lib:$NVHPC_ROOT/compilers/lib:$NVHPC_ROOT/cuda/lib64:$NVHPC_ROOT/cuda/lib64/stubs:$NVHPC_ROOT/math_libs/lib64:$LD_LIBRARY_PATH"
 
 # MPI and OpenMP variables.
 export MPICH_GPU_SUPPORT_ENABLED=0
@@ -40,4 +48,4 @@ unset __conda_setup
 # <<< conda initialize <<<
 
 
-conda activate
+conda activate perlmutter

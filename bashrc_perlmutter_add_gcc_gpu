@@ -1,30 +1,58 @@
 #!/bin/bash
 
-conda deactivate
+# Deactivate all active conda levels, but only if conda is on PATH
+if command -v conda >/dev/null 2>&1; then
+  while [[ ${CONDA_SHLVL:-0} -gt 1 ]]; do
+    conda deactivate
+  done
+fi
 
-export CUDA_VER=12.2
-export CUDA_ROOT="/opt/nvidia/hpc_sdk/Linux_x86_64/23.9/cuda/12.2"
-export NVHPC_VER=23.9
-export NVHPC_ROOT="/opt/nvidia/hpc_sdk/Linux_86_64/23.9"
-export CUDNN_ROOT="/global/common/software/nersc9/cudnn/9.1.0-cuda12/"
-export NCCL_ROOT="/global/common/software/nersc9/nccl/2.21.5"
 
+export NVHPC_VER="24.5"
+export CUDA_VER="12.4"
+export NVHPC_ROOT="/opt/nvidia/hpc_sdk/Linux_x86_64/$NVHPC_VER"
+export CUDA_ROOT="/opt/nvidia/hpc_sdk/Linux_x86_64/$NVHPC_VER/cuda/$CUDA_VER"
+export CUDNN_ROOT="/global/common/software/nersc9/cudnn/9.5.0-cuda12/"
+export NCCL_ROOT="/global/common/software/nersc9/nccl/2.24.3"
+
+
+# Set previous env vars for module load.
+export CPATH=""
+export LIBRARY_PATH=""
+export LD_LIBRARY_PATH=""
 module purge
+module load PrgEnv-gnu/8.5.0 
+module load gcc-native/12.3
+module load cudatoolkit/12.4
+module load cudnn/9.5.0 
+module load nccl/2.24.3
+# Backup. 
+# module load PrgEnv-gnu/8.5.0 
+# module load gcc-native/12.3
+# module load craype-accel-nvidia80
+# module load cudatoolkit/12.4
+# module load cudnn/9.5.0 
+# module load nccl/2.24.3
+# module load gpu/1.0
+# module load gcc-native/13.2    # Default. 
+# module load cray-mpich/8.1.30
+# module load cmake
+# module load cray-python/3.11.7
+# module load julia/1.10.4
+# module unload craype-accel-nvidia80
 
-export PATH="$SCRATCH_GCC_GPU/bin:$MPI_GCC_GPU_ROOT/bin:$CUDA_ROOT/bin:$PREVIOUS_PATH"
-export CPATH="$SCRATCH_GCC_GPU/include:$MPI_GCC_GPU_ROOT/include:$CUDA_ROOT/include:$NVHPC_ROOT/math_libs/lib64:$CUDNN_ROOT/include:$NCCL_ROOT/include"
-export LIBRARY_PATH="$SCRATCH_GCC_GPU/lib:$MPI_GCC_GPU_ROOT/lib:$NVHPC_ROOT/math_libs/lib64:$CUDNN_ROOT/lib:$NCCL_ROOT/plugins/lib:$NCCL_ROOT/lib:$CUDA_ROOT/lib64:$CUDA_ROOT/lib64/stubs"
-export LD_LIBRARY_PATH="$SCRATCH_GCC_GPU/lib:$MPI_GCC_GPU_ROOT/lib:$NVHPC_ROOT/math_libs/lib64:$CUDNN_ROOT/lib:$NCCL_ROOT/plugins/lib:$NCCL_ROOT/lib:$CUDA_ROOT/lib64:$CUDA_ROOT/lib64/stubs"
 
-# Based on https://github.com/sparticlesteve/nersc-pytorch-build/blob/main/config.sh
-module load cmake
-module load PrgEnv-gnu gcc-native/12.3
-module load cudatoolkit/12.2
-module load cudnn/9.1.0 
-module load nccl/2.21.5
-#module unload craype-accel-nvidia80
+# Set new env vars.
+export PATH="$SCRATCH_GCC_GPU/bin:$MPI_GCC_GPU_ROOT/bin:$CUDA_ROOT/bin:$PATH"
+export CPATH="$SCRATCH_GCC_GPU/include:$MPI_GCC_GPU_ROOT/include:$CUDA_ROOT/include:$NVHPC_ROOT/math_libs/lib64:$CUDNN_ROOT/include:$NCCL_ROOT/include:$CPATH"
+export LIBRARY_PATH="$SCRATCH_GCC_GPU/lib:$MPI_GCC_GPU_ROOT/lib:$NVHPC_ROOT/math_libs/lib64:$CUDNN_ROOT/lib:$NCCL_ROOT/plugins/lib:$NCCL_ROOT/lib:$CUDA_ROOT/lib64:$CUDA_ROOT/lib64/stubs:/lib64"
+export LD_LIBRARY_PATH="$SCRATCH_GCC_GPU/lib:$MPI_GCC_GPU_ROOT/lib:$NVHPC_ROOT/math_libs/lib64:$CUDNN_ROOT/lib:$NCCL_ROOT/plugins/lib:$NCCL_ROOT/lib:$CUDA_ROOT/lib64:$CUDA_ROOT/lib64/stubs:/lib64:$LD_LIBRARY_PATH"
+# Other exports.
+export OMP_NUM_THREADS=2
+export CRAY_ACCEL_TARGET=nvidia80
 export MPICH_GPU_SUPPORT_ENABLED=0
 
+# Load conda.
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
 __conda_setup="$('/pscratch/sd/k/krishnaa/gcc_gpu/miniconda/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
@@ -40,4 +68,4 @@ fi
 unset __conda_setup
 # <<< conda initialize <<<
 
-conda activate
+conda activate perlmutter
