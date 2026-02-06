@@ -12,6 +12,9 @@ wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux
 # python
 pip install numpy pandas scipy sympy matplotlib seaborn
 
+# mpi4py
+MPICC=mpicc CC=mpicc pip install --no-binary=mpi4py mpi4py
+
 # libz
 wget -O zlib.tar.gz https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
 && tar -xzvf zlib.tar.gz && mv zlib-* zlib \
@@ -38,7 +41,8 @@ wget -O hdf5.tar.gz https://github.com/HDFGroup/hdf5/releases/download/2.0.0/hdf
 && cmake --install build \
 && cd .. \
 && rm -rf hdf5* \
-&& CC=mpicc HDF5_MPI="ON" HDF5_DIR="$SCRATCH"  pip3 install --no-binary=h5py h5py
+# h5py
+&& CC=mpicc CFLAGS="-I$CRAY_HDF5_PARALLEL_PREFIX/include" HDF5_MPI="ON" HDF5_DIR="$SCRATCH_CRAY"  pip install --no-binary=h5py h5py
 
 # openblas
 wget -O openblas.tar.gz https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.31/OpenBLAS-0.3.31.tar.gz \
@@ -119,5 +123,44 @@ wget -O bgw.tar.gz https://app.box.com/shared/static/22edl07muvhfnd900tnctsjjftb
 && rm -rf arch* bgw*
 
 # petsc
+wget -O petsc.tar.gz https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-3.24.4.tar.gz \
+&& tar -xzvf petsc.tar.gz \
+&& mv petsc-* petsc \
+&& cd petsc \
+&&  ./configure --with-cc=mpicc \
+CFLAGS+="-DPETSC_SKIP_REAL___FLOAT128" \
+CXXFLAGS+="-DPETSC_SKIP_REAL___FLOAT128" \
+--with-cxx=mpic++ --with-fc=0 \
+--prefix=$SCRATCH_CRAY --with-scalar-type=complex --with-precision=double \
+--with-hdf5-dir=$CRAY_HDF5_PARALLEL_PREFIX \
+--with-blas-lib=$CRAY_LIBSCI_PREFIX/lib/libsci_cray.a \
+--with-lapack-lib=$CRAY_LIBSCI_PREFIX/lib/libsci_cray.a \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf petsc* 
+
+# petsc4py
+wget -O petsc4py.tar.gz https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc4py-3.24.4.tar.gz \
+&& tar -xzvf petsc4py.tar.gz && mv petsc4py-* petsc4py \
+&& cd petsc4py \
+&& CC=mpicc CXX=mpic++ PETSC_DIR=$SCRATCH_CRAY pip install . \
+&& cd .. \
+&& rm -rf petsc4py*
 
 # slepc
+&& wget -O slepc.tar.gz https://slepc.upv.es/download/distrib/slepc-3.24.2.tar.gz \
+&& tar -xzvf slepc.tar.gz \
+&& mv slepc-* slepc \
+&& cd slepc \
+&& CC=mpicc CXX=mpic++ ./configure --prefix=$SCRATCH_CRAY \
+&& make -j8 && make install \
+&& cd .. \
+&& rm -rf slepc*
+
+# slepc4py
+wget -O slepc4py.tar.gz https://slepc.upv.es/download/distrib/slepc4py-3.24.2.tar.gz \
+&& tar -xzvf slepc4py.tar.gz && mv slepc4py-* slepc4py \
+&& cd slepc4py \
+&& CC=mpicc CXX=mpic++ PETSC_DIR=$SCRATCH_CRAY SLEPC_DIR=$SCRATCH_CRAY pip install . \
+&& cd .. \
+&& rm -rf slepc4py* 
