@@ -27,22 +27,34 @@ fi
 # modules 
 
 # gcc_cpu
-module load PrgEnv-gnu/8.6.0
-module load cray-hdf5-parallel/1.12.2.9
-module load cray-libsci/25.09.0
-module load cray-fftw/3.3.10.11
-module load petsc-gcc-cpu/3.24.4
-module load slepc-gcc-cpu/3.24.2
-module load libxc-gcc-cpu/7.0.0
-module load qe-gcc-cpu/7.3.1
-module load elpa-gcc-cpu/2025.06.002
-module load bgw-gcc-cpu/4.0.0
-conda activate gcc_cpu
+# export MPICH_GPU_SUPPORT_ENABLED=0
+# module load PrgEnv-gnu/8.6.0
+# module load cray-hdf5-parallel/1.12.2.9
+# module load cray-libsci/25.09.0
+# module load cray-fftw/3.3.10.11
+# module load petsc-gcc-cpu/3.24.4
+# module load slepc-gcc-cpu/3.24.2
+# module load libxc-gcc-cpu/7.0.0
+# module load qe-gcc-cpu/7.3.1
+# module load elpa-gcc-cpu/2025.06.002
+# module load bgw-gcc-cpu/4.0.0
+# conda activate gcc_cpu
 
 # # gcc_gpu
 # module load PrgEnv-gnu/8.6.0
 # conda activate gcc_gpu
 
 # # nvhpc_gpu
-# module load PrgEnv-nvidia
-# conda activate nvhpc_gpu
+export MPICH_GPU_SUPPORT_ENABLED=1
+module load PrgEnv-nvidia/8.6.0
+module load craype-accel-nvidia80
+module load cray-hdf5-parallel/1.14.3.7
+module load cray-libsci/25.09.0
+module load cray-fftw/3.3.10.11
+module load elpa-nvhpc-gpu/2025.06.002
+module load petsc-nvhpc-gpu/3.24.4
+module load slepc-nvhpc-gpu/3.24.2
+module load libxc-nvhpc-gpu/7.0.0
+module load qe-nvhpc-gpu/7.3.1
+module load bgw-nvhpc-gpu/4.0.0
+conda activate nvhpc_gpu

@@ -6,9 +6,12 @@ MATHFLAG  = -DUSESCALAPACK -DUNPACKED -DUSEFFTW3 -DHDF5 -DOMP_TARGET -DUSEELPA  
 # DEBUGFLAG = -DDEBUG -DNVTX
 #
 
-NVCC=nvcc 
+NVCC=nvcc
 NVCCOPT= -O3 -use_fast_math
-CUDALIB= -lcufft -lcublasLt -lcublas -lcudart -lcuda -lnvToolsExt
+CUDA_LIBDIR ?= ${CUDA_HOME}/lib64
+CUDALIB= -L$(CUDA_LIBDIR) -lcufft -lcublasLt -lcublas -lcudart -lcuda -lnvToolsExt
+CUDA_VER=12.9
+CUDA_CC=80
 
 # For summit: FCPP    = /usr/bin/cpp  -P -ansi -nostdinc -C -E -std=c11   #  -C  -P  -E -ansi  -nostdinc  /usr/bin/cpp
 FCPP    = /usr/bin/cpp  -C   -nostdinc   #  -C  -P  -E -ansi  -nostdinc  /usr/bin/cpp

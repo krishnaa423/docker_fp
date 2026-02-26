@@ -37,8 +37,8 @@ module load cray-libsci/25.09.0
 
 # elpa
 wget -O elpa-2025.06.002.tar.gz https://gitlab.mpcdf.mpg.de/elpa/elpa/-/archive/new_release_2025.06.002/elpa-new_release_2025.06.002.tar.gz 
-tar -xzvf ./elpa-2025.06.002.tar.gz && mv elpa-new_release* ./elpa-2025.06.002
-cd elpa-2025.06.002
+tar -xzvf ./elpa-2025.06.002.tar.gz && mv elpa-new_release* ./elpa-gcc-cpu-2025.06.002
+cd elpa-gcc-cpu-2025.06.002
 conda install -c conda-forge autoconf
 ./autogen.sh 
 mkdir -p $SCRATCH_GCC_CPU/elpa-2025.06.002
@@ -56,7 +56,7 @@ CC=cc CXX=CC FC=ftn ./configure --prefix=$SCRATCH_GCC_CPU/elpa-2025.06.002 \
     LIBS="-lsci_gnu_mpi -lsci_gnu" 
 make -j8 
 make install 
-cat > $SCRATCH/modulefiles/petsc-gcc-cpu/3.24.4.lua << 'EOF'
+cat > $SCRATCH/modulefiles/elpa-gcc-cpu/3.24.4.lua << 'EOF'
 help([[
 elpa gcc cpu 2025.06.002
 ]])
@@ -104,11 +104,14 @@ Petsc gcc cpu 3.24.4
 prereq('PrgEnv-gnu', 'cray-hdf5-parallel', 'cray-libsci')
 
 local scratch_gcc_cpu = os.getenv('SCRATCH_GCC_CPU')
+local libsci_dir = os.getenv('CRAY_LIBSCI_PREFIX')
 local petsc_folder = scratch_gcc_cpu .. '/petsc-3.24.4'
 
 prepend_path('CPATH', petsc_folder .. '/include')
 prepend_path('LIBRARY_PATH', petsc_folder .. '/lib')
+prepend_path('LIBRARY_PATH', libsci_dir .. '/lib')
 prepend_path('LD_LIBRARY_PATH', petsc_folder .. '/lib')
+prepend_path('LD_LIBRARY_PATH', libsci_dir .. '/lib')
 setenv('PETSC_DIR', petsc_folder)
 EOF
 module load petsc-gcc-cpu/3.24.4
@@ -206,7 +209,7 @@ make epw -j8
 gh repo clone perturbo
 cd perturbo
 git checkout develop
-cp ../../docker_fp/make.sys ./make.sys
+cp ../../docker_fp/perlmutter/perturbo_gcc_cpu_make.sys ./make.sys
 make 
 cd ../
 make install 
@@ -233,7 +236,7 @@ cd ./BerkeleyGW-gcc-cpu-4.0.0
 mkdir -p $SCRATCH_GCC_CPU/bgw-4.0.0
 mkdir -p $SCRATCH/modulefiles/bgw-gcc-cpu
 touch $SCRATCH/modulefiles/bgw-gcc-cpu/4.0.0.lua
-cp ../docker_fp/arch_perlmutter_gcc_cpu.mk ./arch.mk
+cp ../docker_fp/perlmutter/bgw_gcc_cpu_arch.mk ./arch.mk
 make all-flavors -j16
 make install INSTDIR=$SCRATCH_GCC_CPU/bgw-4.0.0
 cat > $SCRATCH/modulefiles/bgw-gcc-cpu/4.0.0.lua << 'EOF'
