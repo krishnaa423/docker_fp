@@ -33,12 +33,15 @@ module load PrgEnv-cray/8.6.0
 module load cray-hdf5-parallel/1.12.2.11
 module load cray-libsci/24.11.0
 module load cray-fftw/3.3.10.9
+export LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LIBRARY_PATH
+export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
 # elpa
 module load petsc-cray-cpu/3.24.4
 module load slepc-cray-cpu/3.24.2
 module load libxc-cray-cpu/7.0.0 
-# qe
-# bgw
+module load qe-cray-cpu/7.3.1
+# qe 7.5. Did not compile. 
+module load bgw-cray-cpu/4.0.0
 conda activate cray_cpu
 
 # # cray_gpu

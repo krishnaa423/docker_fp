@@ -93,7 +93,9 @@ touch $SCRATCH/modulefiles/petsc-nvhpc-gpu/3.24.4.lua
     --with-scalar-type=complex --with-precision=double \
     --with-hdf5-dir=$CRAY_HDF5_PARALLEL_PREFIX \
     --with-blas-lib=$CRAY_LIBSCI_PREFIX/lib/libsci_nvidia.a \
-    --with-lapack-lib=$CRAY_LIBSCI_PREFIX/lib/libsci_nvidia.a 
+    --with-lapack-lib=$CRAY_LIBSCI_PREFIX/lib/libsci_nvidia.a \
+    --with-cuda=1 \
+    --with-cuda-dir=/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9
 make -j8 
 make install 
 cd ..
@@ -269,7 +271,7 @@ module load bgw-nvhpc-gpu/4.0.0
 # - torch, torchvision, torchaudio, tensorboard, datasets, transformers, diffusers, 
 # - langchain, ase, gpaw, pyscf, mp_api, pymatgen, jupyterlab  
 pip install cython
-pip install numpy pandas scipy sympy matplotlib seaborn
+pip install numpy pandas scipy sympy matplotlib seaborn cupy 
 pip install scikit-learn joblib xgboost
 pip install torch torchvision torch_geometric transformers datasets accelerate evaluate diffusers e3nn 
 pip install langchain langchain-huggingface

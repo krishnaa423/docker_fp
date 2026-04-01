@@ -195,6 +195,7 @@ pip install --no-cache-dir . --no-build-isolation
 cd ../
 
 # qe, perturbo
+# Make sure -O0 is used in make.inc to get things to run. See make.inc_cpu for example. 
 gh repo clone q-e
 mv q-e qe-cray-cpu-7.3.1
 cd qe-cray-cpu-7.3.1
@@ -203,6 +204,7 @@ mkdir -p $SCRATCH_CRAY_CPU/qe-7.3.1
 mkdir -p $SCRATCH/modulefiles/qe-cray-cpu
 touch $SCRATCH/modulefiles/qe-cray-cpu/7.3.1.lua
 CC=cc CXX=CC FC=ftn F90=ftn MPIF90=ftn ./configure \
+    ARCH=craype \
     --prefix=$SCRATCH_CRAY_CPU/qe-7.3.1 \
     --with-hdf5=yes --with-hdf5-include=$CRAY_HDF5_PARALLEL_PREFIX/include \
     --with-hdf5-libs="-L$CRAY_HDF5_PARALLEL_PREFIX/lib -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 -lz -ldl -lm" \
@@ -241,6 +243,22 @@ conda install -c conda-forge julia
 julia -e 'using Pkg; Pkg.add("WannierIO")'
 module load qe-cray-cpu/7.3.1
 cd ../
+
+# qe-7.5. 
+# Make sure -O0 is used in make.inc to get things to run. See make.inc_cpu for example. But change version. 
+# Similar to qe-7.5.1, but just change version names. THIS DID NOT WORK!!!
+# CC=cc CXX=CC FC=ftn F90=ftn MPIF90=ftn ./configure \
+#     ARCH=craype \
+#     --prefix=$SCRATCH_CRAY_CPU/qe-7.5 \
+#     --with-hdf5=yes --with-hdf5-include=$CRAY_HDF5_PARALLEL_PREFIX/include \
+#     --with-hdf5-libs="-L$CRAY_HDF5_PARALLEL_PREFIX/lib -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 -lz -ldl -lm" \
+#     --with-libxc=yes --with-libxc-prefix=$SCRATCH_CRAY_CPU/libxc-7.0.0 \
+#     --with-libxc-include=$SCRATCH_CRAY_CPU/libxc-7.0.0/include \
+#     BLAS_LIBS="-L$CRAY_LIBSCI_PREFIX/lib -lsci_cray" \
+#     LAPACK_LIBS="-L$CRAY_LIBSCI_PREFIX/lib -lsci_cray" \
+#     SCALAPACK_LIBS="-L$CRAY_LIBSCI_PREFIX/lib -lsci_cray_mpi" \
+#     FFTW_INCLUDE="$FFTW_ROOT/include" \
+#     FFTW_LIBS="-L$FFTW_ROOT/lib -lfftw3_mpi -lfftw3_threads -lfftw3"
 
 # bgw
 gh repo clone BerkeleyGW

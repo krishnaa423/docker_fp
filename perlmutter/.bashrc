@@ -18,6 +18,7 @@ alias cds='cd $SCRATCH'
 alias cdh='cd $HOME'
 alias status="clear && squeue -u krishnaa"
 alias cup="conda deactivate && conda activate"
+alias si='sinfo -S+P -o "%18P %8a %20F"'
 
 # miniconda
 if [ -f $CONDA_ROOT/etc/profile.d/conda.sh ]; then
@@ -26,7 +27,7 @@ fi
 
 # modules 
 
-# gcc_cpu
+# # gcc_cpu
 # export MPICH_GPU_SUPPORT_ENABLED=0
 # module load PrgEnv-gnu/8.6.0
 # module load cray-hdf5-parallel/1.12.2.9
@@ -36,21 +37,23 @@ fi
 # module load slepc-gcc-cpu/3.24.2
 # module load libxc-gcc-cpu/7.0.0
 # module load qe-gcc-cpu/7.3.1
+# # module load qe-gcc-cpu/7.5
 # module load elpa-gcc-cpu/2025.06.002
 # module load bgw-gcc-cpu/4.0.0
 # conda activate gcc_cpu
 
-# # gcc_gpu
-# module load PrgEnv-gnu/8.6.0
-# conda activate gcc_gpu
-
-# # nvhpc_gpu
-export MPICH_GPU_SUPPORT_ENABLED=1
+# nvhpc_gpu
+# petsc4py and slepc4py needs:
+# export MPICH_GPU_SUPPORT_ENABLED=0                                                                                                                                                                
+# export PETSC_OPTIONS="-use_gpu_aware_mpi 0"
+export MPICH_GPU_SUPPORT_ENABLED=0
 module load PrgEnv-nvidia/8.6.0
 module load craype-accel-nvidia80
 module load cray-hdf5-parallel/1.14.3.7
 module load cray-libsci/25.09.0
 module load cray-fftw/3.3.10.11
+export LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LIBRARY_PATH
+export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
 module load elpa-nvhpc-gpu/2025.06.002
 module load petsc-nvhpc-gpu/3.24.4
 module load slepc-nvhpc-gpu/3.24.2

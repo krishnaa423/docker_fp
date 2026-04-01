@@ -229,6 +229,9 @@ EOF
 module load qe-gcc-cpu/7.3.1
 cd ../
 
+# qe-7.5
+# Mirrors qe-7.3.1, but adds 7.5 version. 
+
 # bgw 
 gh repo clone BerkeleyGW
 mv BerkeleyGW BerkeleyGW-gcc-cpu-4.0.0
