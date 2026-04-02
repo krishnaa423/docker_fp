@@ -4,6 +4,30 @@
 cd $SCRATCH/other_codes
 export CRAY_CPU_TARGET=x86-64
 
+# environment files
+#general-cpu-env
+mkdir -p $SCRATCH/modulefiles/general-cpu-env
+touch $SCRATCH/modulefiles/general-cpu-env/1.0.0.lua
+cat > $SCRATCH/modulefiles/general-cpu-env/1.0.0.lua << 'EOF'
+help([[
+Setup General CPU env 1.0.0
+]])
+
+load('PrgEnv-cray/8.6.0')
+-- load('cpe/24.1')
+load('cce/18.0.1')
+load('cray-hdf5-parallel')
+load('cray-libsci')
+load('cray-fftw')
+
+local cray_ld_library_path = os.getenv('CRAY_LD_LIBRARY_PATH')
+
+prepend_path('LIBRARY_PATH', cray_ld_library_path)
+prepend_path('LD_LIBRARY_PATH', cray_ld_library_path)
+
+pushenv('MPICH_GPU_SUPPORT_ENABLED', '0')
+EOF
+
 # miniconda
 wget -O miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh 
 chmod u+x ./miniconda.sh
@@ -11,7 +35,6 @@ chmod u+x ./miniconda.sh
 conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
 conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r 
 conda create -n cray_cpu python=3.10
-# conda create -n cray_cpu python=3.10
 # conda create -n cray_gpu python=3.10
 conda activate cray_cpu
 rm -rf $CONDA_ROOT/envs/cray_cpu/compiler_compat/ld
@@ -73,7 +96,7 @@ module load cray-libsci/24.11.0
 # prepend_path('CPATH', elpa_folder .. '/include')
 # prepend_path('LIBRARY_PATH', elpa_folder .. '/lib')
 # prepend_path('LD_LIBRARY_PATH', elpa_folder .. '/lib')
-# setenv('ELPA_ROOT', elpa_folder)
+# pushenv('ELPA_ROOT', elpa_folder)
 # EOF
 # module load elpa-cray-cpu/2025.06.002
 # ln -sf $SCRATCH_CRAY_CPU/elpa-2025.06.002/include/elpa-*/elpa $SCRATCH_CRAY_CPU//elpa-2025.06.002/include 
@@ -116,7 +139,8 @@ prepend_path('LIBRARY_PATH', petsc_folder .. '/lib')
 prepend_path('LIBRARY_PATH', libsci_dir .. '/lib')
 prepend_path('LD_LIBRARY_PATH', petsc_folder .. '/lib')
 prepend_path('LD_LIBRARY_PATH', libsci_dir .. '/lib')
-setenv('PETSC_DIR', petsc_folder)
+pushenv('PETSC_DIR', petsc_folder)
+pushenv('PETSC_OPTIONS', '-use_gpu_aware_mpi 0')
 EOF
 module load petsc-cray-cpu/3.24.4
 wget -O petsc4py-3.24.4.tar.gz https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc4py-3.24.4.tar.gz 
@@ -150,7 +174,7 @@ local slepc_folder = scratch_cray_cpu .. '/slepc-3.24.2'
 prepend_path('CPATH', slepc_folder .. '/include')
 prepend_path('LIBRARY_PATH', slepc_folder .. '/lib')
 prepend_path('LD_LIBRARY_PATH', slepc_folder .. '/lib')
-setenv('SLEPC_DIR', slepc_folder)
+pushenv('SLEPC_DIR', slepc_folder)
 EOF
 module load slepc-cray-cpu/3.24.2
 wget -O slepc4py-3.24.2.tar.gz https://slepc.upv.es/download/distrib/slepc4py-3.24.2.tar.gz 
@@ -187,7 +211,7 @@ prepend_path('PATH', libxc_folder .. '/bin')
 prepend_path('CPATH', libxc_folder .. '/include')
 prepend_path('LIBRARY_PATH', libxc_folder .. '/lib')
 prepend_path('LD_LIBRARY_PATH', libxc_folder .. '/lib')
-setenv('LIBXC_ROOT', libxc_folder)
+pushenv('LIBXC_ROOT', libxc_folder)
 EOF
 module load libxc-cray-cpu/7.0.0 
 sed -i 's/nprocs = mp.cpu_count()/nprocs = 4  # Limited to prevent OOM/g' setup.py
@@ -216,7 +240,7 @@ CC=cc CXX=CC FC=ftn F90=ftn MPIF90=ftn ./configure \
     FFTW_INCLUDE="$FFTW_ROOT/include" \
     FFTW_LIBS="-L$FFTW_ROOT/lib -lfftw3_mpi -lfftw3_threads -lfftw3"
 make all -j8 
-# make epw -j8 
+make epw -j8 
 # perturbo
 gh repo clone perturbo
 cd perturbo
@@ -236,7 +260,7 @@ local scratch_cray_cpu = os.getenv('SCRATCH_CRAY_CPU')
 local qe_folder = scratch_cray_cpu .. '/qe-7.3.1'
 
 prepend_path('PATH', qe_folder .. '/bin') 
-setenv('QE_ROOT', qe_folder)
+pushenv('QE_ROOT', qe_folder)
 EOF
 cp ./external/wannier90/utility/kmesh.pl $SCRATCH_CRAY_CPU/qe-7.3.1/bin/kmesh.pl
 conda install -c conda-forge julia
@@ -284,7 +308,7 @@ prepend_path('PATH', bgw_folder .. '/bin')
 prepend_path('CPATH', bgw_folder .. '/include') 
 prepend_path('LIBRARY_PATH', bgw_folder .. '/lib') 
 prepend_path('LD_LIBRARY_PATH', bgw_folder .. '/lib') 
-setenv('BGW_ROOT', bgw_folder)
+pushenv('BGW_ROOT', bgw_folder)
 EOF
 module load bgw-cray-cpu/4.0.0
 
@@ -295,5 +319,6 @@ pip install cython
 pip install numpy pandas scipy sympy matplotlib seaborn
 pip install scikit-learn joblib xgboost
 pip install torch torchvision torch_geometric transformers datasets accelerate evaluate diffusers e3nn 
+pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.1.0+cpu.html
 pip install langchain langchain-huggingface
 pip install ase pymatgen mp_api pyvista[all] 

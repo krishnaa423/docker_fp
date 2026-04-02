@@ -15,7 +15,7 @@ export CONDA_ROOT=$SCRATCH/other_codes/miniconda
 alias cdw='cd $WORK'
 alias cds='cd $SCRATCH'
 alias cdh='cd $HOME'
-alias status="clear && squeue -u krishnaa"
+alias status="clear && squeue -u krishnaa423"
 alias cancel='scancel -u krishnaa423'
 alias cup="conda deactivate && conda activate"
 alias si='sinfo -S+P -o "%18P %8a %20F"'
@@ -27,15 +27,47 @@ fi
 
 # modules 
 
-# cray_cpu
-export MPICH_GPU_SUPPORT_ENABLED=0
-module load PrgEnv-cray/8.6.0 
-module load cray-hdf5-parallel/1.12.2.11
-module load cray-libsci/24.11.0
-module load cray-fftw/3.3.10.9
-export LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LIBRARY_PATH
-export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
-# elpa
+# # cray_cpu
+# export MPICH_GPU_SUPPORT_ENABLED=0
+# module load PrgEnv-cray/8.6.0 
+# module load cray-hdf5-parallel/1.12.2.11
+# module load cray-libsci/24.11.0
+# module load cray-fftw/3.3.10.9
+# export LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LIBRARY_PATH
+# export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
+# # elpa
+# module load petsc-cray-cpu/3.24.4
+# module load slepc-cray-cpu/3.24.2
+# module load libxc-cray-cpu/7.0.0 
+# module load qe-cray-cpu/7.3.1
+# # qe 7.5. Did not compile. 
+# module load bgw-cray-cpu/4.0.0
+# conda activate cray_cpu
+
+# # cray_gpu
+# export MPICH_GPU_SUPPORT_ENABLED=0
+# module load PrgEnv-cray/8.3.3
+# # module load cpe/23.03
+# module load cce/15.0.1
+# module load rocm/5.3.0
+# module load craype-accel-amd-gfx90a
+# export HCC_AMDGPU_TARGET=gfx90a
+# module load cray-hdf5-parallel/1.12.2.3
+# module load cray-libsci/23.02.1.1
+# module load cray-fftw/3.3.10.9
+# export LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LIBRARY_PATH
+# export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
+# # # elpa
+# # module load petsc-cray-gpu/3.24.4
+# # export PETSC_OPTIONS="-use_gpu_aware_mpi 0"
+# # module load slepc-cray-gpu/3.24.2
+# # module load libxc-cray-gpu/7.0.0 
+# # module load hipfort-cray-gpu/5.3.0
+# # module load bgw-cray-gpu/4.0.0
+# conda activate cray_gpu
+
+# cray cpu: general
+module load general-gpu-env/1.0.0
 module load petsc-cray-cpu/3.24.4
 module load slepc-cray-cpu/3.24.2
 module load libxc-cray-cpu/7.0.0 
@@ -44,17 +76,16 @@ module load qe-cray-cpu/7.3.1
 module load bgw-cray-cpu/4.0.0
 conda activate cray_cpu
 
-# # cray_gpu
-# export MPICH_GPU_SUPPORT_ENABLED=0
-# module load PrgEnv-cray
-# module load craype-accel-amd-gfx90a
-# module load rocm
-# module load cray-hdf5-parallel
-# module load cray-libsci
-# module load cray-fftw
-# # elpa
-# # petsc
-# # slepc
-# # libxc
-# # qe
-# # bgw
+# # cray gpu: bgw 
+# module load bgw-gpu-env/1.0.0
+# module load hipfort-cray-gpu/5.3.0
+# module load bgw-cray-gpu/4.0.0
+# export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
+# conda activate cray_gpu
+
+# # cray gpu: general
+# module load general-gpu-env/1.0.0
+# module load petsc-cray-gpu/3.24.4
+# module load slepc-cray-gpu/3.24.2
+# module load libxc-cray-gpu/7.0.0 
+# conda activate cray_gpu
