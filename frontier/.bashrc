@@ -66,15 +66,15 @@ fi
 # # module load bgw-cray-gpu/4.0.0
 # conda activate cray_gpu
 
-# cray cpu: general
-module load general-gpu-env/1.0.0
-module load petsc-cray-cpu/3.24.4
-module load slepc-cray-cpu/3.24.2
-module load libxc-cray-cpu/7.0.0 
-module load qe-cray-cpu/7.3.1
-# qe 7.5. Did not compile. 
-module load bgw-cray-cpu/4.0.0
-conda activate cray_cpu
+# # cray cpu: general
+# module load general-gpu-env/1.0.0
+# module load petsc-cray-cpu/3.24.4
+# module load slepc-cray-cpu/3.24.2
+# module load libxc-cray-cpu/7.0.0 
+# module load qe-cray-cpu/7.3.1
+# # qe 7.5. Did not compile. 
+# module load bgw-cray-cpu/4.0.0
+# conda activate cray_cpu
 
 # # cray gpu: bgw 
 # module load bgw-gpu-env/1.0.0
@@ -83,9 +83,12 @@ conda activate cray_cpu
 # export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
 # conda activate cray_gpu
 
-# # cray gpu: general
-# module load general-gpu-env/1.0.0
-# module load petsc-cray-gpu/3.24.4
-# module load slepc-cray-gpu/3.24.2
-# module load libxc-cray-gpu/7.0.0 
-# conda activate cray_gpu
+# cray gpu: general
+module load general-gpu-env/1.0.0
+module load petsc-cray-gpu/3.24.4
+module load slepc-cray-gpu/3.24.2
+module load libxc-cray-gpu/7.0.0 
+module load hipfort-cray-gpu/6.2.4
+module load qe-general-gpu/7.3.1
+# module load bgw-general-gpu/4.0.0
+conda activate cray_gpu
