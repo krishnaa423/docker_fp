@@ -3,46 +3,56 @@
 PS1='\[\e[0;32m\]\u@\h:\[\e[0;34m\]\w\[\e[0m\]\$ '
 export LS_COLORS='di=1;34:ln=1;36:so=1;35:pi=33:ex=1;32:bd=1;33;40:cd=1;33;40:su=37;41:sg=30;43:tw=30;42:ow=30;43'
 alias ls='ls --color=auto'
+alias grep='grep --color=auto'
+
 # variables and aliases.
 export HOME=/ccs/home/krishnaa423
 export WORK=/lustre/orion/mat280/proj-shared
 export SCRATCH=/lustre/orion/mat280/scratch/krishnaa423
-export SCRATCH_CRAY_CPU="$SCRATCH/cray_cpu"
-export SCRATCH_CRAY_GPU="$SCRATCH/cray_gpu"
-export MP_API="m6jL2Vf3fBHPxw6hWVtv3UYfMsmuYY1Z"
-export MODULEPATH="$SCRATCH/modulefiles:$MODULEPATH"
-export CONDA_ROOT=$SCRATCH/other_codes/miniconda
+export MODULEPATH="$SCRATCH/opt/modulefiles:$MODULEPATH"
+export CONDA_ROOT=$SCRATCH/opt/miniconda
 alias cdw='cd $WORK'
 alias cds='cd $SCRATCH'
 alias cdh='cd $HOME'
 alias status="clear && squeue -u krishnaa423"
-alias cancel='scancel -u krishnaa423'
 alias cup="conda deactivate && conda activate"
 alias si='sinfo -S+P -o "%18P %8a %20F"'
+alias cancel='scancel -u krishnaa423'
+alias la='ls -la'
+alias rmrf='rm -rf ./*'
+alias icpu='salloc --account=mat280 --partition=batch --nodes=4 --time=01:00:00'
+alias igpu='salloc --account=mat280 --partition=batch --nodes=4 --time=01:00:00'
 
 # miniconda
 if [ -f $CONDA_ROOT/etc/profile.d/conda.sh ]; then
     . $CONDA_ROOT/etc/profile.d/conda.sh
 fi
 
-# modules 
+# module loads. 
 
-# # cray_cpu
-# export MPICH_GPU_SUPPORT_ENABLED=0
-# module load PrgEnv-cray/8.6.0 
-# module load cray-hdf5-parallel/1.12.2.11
-# module load cray-libsci/24.11.0
-# module load cray-fftw/3.3.10.9
-# export LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LIBRARY_PATH
-# export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
-# # elpa
-# module load petsc-cray-cpu/3.24.4
-# module load slepc-cray-cpu/3.24.2
-# module load libxc-cray-cpu/7.0.0 
-# module load qe-cray-cpu/7.3.1
-# # qe 7.5. Did not compile. 
-# module load bgw-cray-cpu/4.0.0
-# conda activate cray_cpu
+# cray_cpu.
+module load cpu-env/cray-1.0.0
+# module load cpu-env/cray-2.0.0
+conda activate cray_cpu
+
+# cray_gpu. 
+# gpu-env
+# petsc
+# slepc
+# libxc
+# qe
+# bgw
+# cray_gpu conda 
+
+
+
+
+
+
+
+
+
+
 
 # # cray_gpu
 # export MPICH_GPU_SUPPORT_ENABLED=0
@@ -83,12 +93,12 @@ fi
 # export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
 # conda activate cray_gpu
 
-# cray gpu: general
-module load general-gpu-env/1.0.0
-module load petsc-cray-gpu/3.24.4
-module load slepc-cray-gpu/3.24.2
-module load libxc-cray-gpu/7.0.0 
-module load hipfort-cray-gpu/6.2.4
-module load qe-general-gpu/7.3.1
-# module load bgw-general-gpu/4.0.0
-conda activate cray_gpu
+# # cray gpu: general
+# module load general-gpu-env/1.0.0
+# module load petsc-cray-gpu/3.24.4
+# module load slepc-cray-gpu/3.24.2
+# module load libxc-cray-gpu/7.0.0 
+# module load hipfort-cray-gpu/6.2.4
+# module load qe-general-gpu/7.3.1
+# # module load bgw-general-gpu/4.0.0
+# conda activate cray_gpu

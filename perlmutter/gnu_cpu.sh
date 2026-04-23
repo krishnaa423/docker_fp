@@ -70,6 +70,7 @@ pip install ase pymatgen mp_api pyvista[all]  --no-cache-dir
 CC=cc MPICC=cc pip install --no-binary=mpi4py mpi4py --force-reinstall --no-cache-dir
 
 # hdf5, h5py. 
+cd ./h5py
 module load cray-hdf5-parallel/1.12.2.9
 wget -O h5py-3.15.1.tar.gz https://github.com/h5py/h5py/archive/refs/tags/3.15.1.tar.gz
 tar -xzvf ./h5py-3.15.1.tar.gz
@@ -79,6 +80,7 @@ CC=cc HDF5_MPI=ON HDF5_DIR=$CRAY_HDF5_PARALLEL_PREFIX pip install . \
   --no-build-isolation \
   --no-cache-dir \
   --force-reinstall
+cd ../../
 
 # openblas
 module load cray-libsci/25.09.0
@@ -231,7 +233,7 @@ libxc gnu cpu 7.0.0
 prereq('PrgEnv-gnu')
 
 local scratch = os.getenv('SCRATCH')
-local libxc_folder = scratch .. '/libxc/libxc-gnu-cpu-7.0.0'
+local libxc_folder = scratch .. '/opt/libxc/libxc-gnu-cpu-7.0.0'
 
 prepend_path('PATH', libxc_folder .. '/bin')
 prepend_path('CPATH', libxc_folder .. '/include')
@@ -343,6 +345,7 @@ prepend_path('LD_LIBRARY_PATH', bgw_folder .. '/lib')
 pushenv('BGW_ROOT', bgw_folder)
 EOF
 module load bgw/gnu-cpu-4.0.0
+cd ../../
 
 # Add all packages. 
 # cpu-env/gnu-1.0.0

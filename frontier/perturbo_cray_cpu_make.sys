@@ -5,7 +5,7 @@
 include ../../make.inc
 
 # for gfortran compiler
-FFLAGS += -eZ -O1 -N 1023
+FFLAGS += -eZ -O0 -N 1023
 LDFLAGS += 
 
 # path to HDF5 library
