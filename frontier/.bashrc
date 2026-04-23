@@ -11,6 +11,7 @@ export WORK=/lustre/orion/mat280/proj-shared
 export SCRATCH=/lustre/orion/mat280/scratch/krishnaa423
 export MODULEPATH="$SCRATCH/opt/modulefiles:$MODULEPATH"
 export CONDA_ROOT=$SCRATCH/opt/miniconda
+export LMOD_EXPERT=1        # Supresses new lmod errors. 
 alias cdw='cd $WORK'
 alias cds='cd $SCRATCH'
 alias cdh='cd $HOME'
@@ -30,76 +31,12 @@ fi
 
 # module loads. 
 
-# cray_cpu.
+# # cray_cpu.
 # module load cpu-env/cray-1.0.0
 # # module load cpu-env/cray-2.0.0
-# 
-
-# cray_gpu
-module load gpu-env/cray-1.0.0
-# petsc
-# slepc
-# libxc
-# qe
-# hipfort
-# bgw
-conda activate cray_cpu
-
-
-
-
-
-
-
-
-
-
-
-# # cray_gpu
-# export MPICH_GPU_SUPPORT_ENABLED=0
-# module load PrgEnv-cray/8.3.3
-# # module load cpe/23.03
-# module load cce/15.0.1
-# module load rocm/5.3.0
-# module load craype-accel-amd-gfx90a
-# export HCC_AMDGPU_TARGET=gfx90a
-# module load cray-hdf5-parallel/1.12.2.3
-# module load cray-libsci/23.02.1.1
-# module load cray-fftw/3.3.10.9
-# export LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LIBRARY_PATH
-# export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
-# # # elpa
-# # module load petsc-cray-gpu/3.24.4
-# # export PETSC_OPTIONS="-use_gpu_aware_mpi 0"
-# # module load slepc-cray-gpu/3.24.2
-# # module load libxc-cray-gpu/7.0.0 
-# # module load hipfort-cray-gpu/5.3.0
-# # module load bgw-cray-gpu/4.0.0
-# conda activate cray_gpu
-
-# # cray cpu: general
-# module load general-gpu-env/1.0.0
-# module load petsc-cray-cpu/3.24.4
-# module load slepc-cray-cpu/3.24.2
-# module load libxc-cray-cpu/7.0.0 
-# module load qe-cray-cpu/7.3.1
-# # qe 7.5. Did not compile. 
-# module load bgw-cray-cpu/4.0.0
 # conda activate cray_cpu
 
-# # cray gpu: bgw 
-# module load bgw-gpu-env/1.0.0
-# module load hipfort-cray-gpu/5.3.0
-# module load bgw-cray-gpu/4.0.0
-# export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
-# conda activate cray_gpu
-
-# # cray gpu: general
-# module load general-gpu-env/1.0.0
-# module load petsc-cray-gpu/3.24.4
-# module load slepc-cray-gpu/3.24.2
-# module load libxc-cray-gpu/7.0.0 
-# module load hipfort-cray-gpu/6.2.4
-# module load qe-general-gpu/7.3.1
-# # module load bgw-general-gpu/4.0.0
-# conda activate cray_gpu
+# cray_gpu
+# module load gpu-env/cray-1.0.0
+module load gpu-env/cray-2.0.0
+conda activate cray_gpu

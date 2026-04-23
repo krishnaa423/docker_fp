@@ -58,10 +58,10 @@ FFTWINCLUDE  = $(FFTW_INC)/
 PERFORMANCE  =
 
 HDF5_LDIR    = $(HDF5_DIR)/lib/
-HDF5LIB      = $(HDF5_LDIR)/libhdf5hl_fortran.a \
-               $(HDF5_LDIR)/libhdf5_hl.a \
-               $(HDF5_LDIR)/libhdf5_fortran.a \
-               $(HDF5_LDIR)/libhdf5.a -lm -lz -ldl  -lstdc++ 
+HDF5LIB      = -L $(HDF5_LDIR) -lhdf5hl_fortran \
+               -lhdf5_hl \
+               -lhdf5_fortran \
+               -lhdf5 -lm -lz -ldl  -lstdc++ 
 HDF5INCLUDE  = $(HDF5_LDIR)/../include
 
 

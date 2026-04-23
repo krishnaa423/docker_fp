@@ -8,6 +8,7 @@ alias grep='grep --color=auto'
 export COMMON=/global/common/software/m3571
 export MODULEPATH="$SCRATCH/opt/modulefiles:$MODULEPATH"
 export CONDA_ROOT=$SCRATCH/opt/miniconda
+export LMOD_EXPERT=1        # Supresses new lmod errors. 
 alias cdw='cd $COMMON'
 alias cds='cd $SCRATCH'
 alias cdh='cd $HOME'
