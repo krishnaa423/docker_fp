@@ -41,6 +41,7 @@ pushenv('MPICH_GPU_SUPPORT_ENABLED', '0')
 pushenv('PETSC_OPTIONS', '-use_gpu_aware_mpi 0')
 EOF
 cd $SCRATCH/opt
+module load gpu-env/1.0.0
 
 # miniconda
 conda create -n nvhpc_gpu python=3.10 -y 

@@ -1,43 +1,36 @@
 #!/bin/bash
 
-# environment files
-#bgw-gpu-env
-mkdir -p $SCRATCH/modulefiles/bgw-gpu-env
-touch $SCRATCH/modulefiles/bgw-gpu-env/1.0.0.lua
-cat > $SCRATCH/modulefiles/bgw-gpu-env/1.0.0.lua << 'EOF'
+# list.
+# - gpu-env/nvhpc-1.0.0.
+# - miniconda.
+# - python packages. 
+# - mpi4py.
+# - hdf5, h5py.
+# - openblas.
+# - scalapack.
+# - elpa.
+# - petsc, petsc4py.
+# - slepc, slepc4py.
+# - fftw.
+# - libxc, pylibxc.
+# - qe-7.3.1, perturbo.
+# - qe-7.5.
+# - bgw.
+# - python packages. 
+# - add all packages. 
+
+# gpu-env/cray-1.0.0.
+mkdir -p $SCRATCH/opt/modulefiles/gpu-env
+touch $SCRATCH/opt/modulefiles/gpu-env/cray-1.0.0.lua
+cat > $SCRATCH/opt/modulefiles/gpu-env/cray-1.0.0.lua << 'EOF'
 help([[
-Setup BGW GPU env 1.0.0
-]])
-
-load('PrgEnv-cray/8.3.3')
--- load('cpe/23.03')
-load('cce/15.0.1')
-load('rocm/5.3.0')
-load('craype-accel-amd-gfx90a')
-load('cray-hdf5-parallel')
-load('cray-libsci')
-load('cray-fftw')
-
-local cray_ld_library_path = os.getenv('CRAY_LD_LIBRARY_PATH')
-
-prepend_path('LIBRARY_PATH', cray_ld_library_path)
-prepend_path('LD_LIBRARY_PATH', cray_ld_library_path)
-
-pushenv('MPICH_GPU_SUPPORT_ENABLED', '0')
-pushenv('HCC_AMDGPU_TARGET', 'gfx90a')
-EOF
-#general-gpu-env
-mkdir -p $SCRATCH/modulefiles/general-gpu-env
-touch $SCRATCH/modulefiles/general-gpu-env/1.0.0.lua
-cat > $SCRATCH/modulefiles/general-gpu-env/1.0.0.lua << 'EOF'
-help([[
-Setup General GPU env 1.0.0
+Setup CRAY GPU env 1.0.0
 ]])
 
 load('PrgEnv-cray/8.6.0')
--- load('cpe/24.1')
-load('cce/18.0.1')
-load('rocm/6.2.4')
+load('cce/20.0.0')
+load('cpe/25.09')
+load('rocm/6.4.2')
 load('craype-accel-amd-gfx90a')
 load('cray-hdf5-parallel')
 load('cray-libsci')
@@ -49,17 +42,18 @@ prepend_path('LIBRARY_PATH', cray_ld_library_path)
 prepend_path('LD_LIBRARY_PATH', cray_ld_library_path)
 
 pushenv('MPICH_GPU_SUPPORT_ENABLED', '0')
-pushenv('HCC_AMDGPU_TARGET', 'gfx90a')
+pushenv('PETSC_OPTIONS', '-use_gpu_aware_mpi 0')
 EOF
+cd $SCRATCH/opt
+module load gpu-env/cray-1.0.0
 
- # miniconda
- module load general-gpu-env/1.0.0
-conda create -n cray_gpu python=3.10
+# miniconda
+conda create -n cray_gpu python=3.10 -y
 conda activate cray_gpu
 # Fix linker called in conda environment. 
 rm -rf $CONDA_ROOT/envs/cray_gpu/compiler_compat/ld
 ln -sf /usr/bin/ld $CONDA_ROOT/envs/cray_gpu/compiler_compat/ld
-conda install -c conda-forge gh
+conda install -c conda-forge gh -y
 gh auth login
 gh repo clone docker_fp
 
@@ -202,30 +196,33 @@ CC=cc pip install --no-cache-dir . --no-build-isolation
 cd ../
 
 # hipfort
-module load bgw-gpu-env/1.0.0
+cd ./hipfort
 git clone https://github.com/ROCm/hipfort --branch rocm-6.2.4
-mv ./hipfort ./hipfort-cpe23.03-cce15.0.1-rocm5.3.0
-cd ./hipfort-cpe23.03-cce15.0.1-rocm5.3.0
-mkdir -p $SCRATCH_CRAY_GPU/hipfort-5.3.0
-mkdir -p $SCRATCH/modulefiles/hipfort-cray-gpu
-touch $SCRATCH/modulefiles/hipfort-cray-gpu/5.3.0.lua
+mv ./hipfort ./hipfort-rocm-6.2.4
+cd ./hipfort-rocm-6.2.4
+mkdir -p $SCRATCH/opt/modulefiles/hipfort
+touch $SCRATCH/opt/modulefiles/hipfort/cray-gpu-6.2.4.lua
 rm -rf ./build && mkdir -p build 
 cd ./build
+# cmake ../ \
+#     -DCMAKE_INSTALL_PREFIX=$SCRATCH/opt/hipfort/hipfort-rocm-6.2.4 \
+#     -DCMAKE_Fortran_COMPILER=$(which ftn) \
+#     -DCMAKE_Fortran_FLAGS='-f free -fopenmp -g -eF'
 cmake ../ \
-    -DCMAKE_INSTALL_PREFIX=$SCRATCH_CRAY_GPU/hipfort-5.3.0 \
+    -DCMAKE_INSTALL_PREFIX=$SCRATCH/opt/hipfort/hipfort-rocm-6.2.4 \
     -DCMAKE_Fortran_COMPILER=$(which ftn) \
-    -DCMAKE_Fortran_FLAGS='-f free -fopenmp -g -eF'
+    -DHIPFORT_COMPILER_FLAGS='-f free -eZ'
 make -j8
 make install 
-cat > $SCRATCH/modulefiles/hipfort-cray-gpu/5.3.0.lua << 'EOF'
+cat > $SCRATCH/opt/modulefiles/hipfort/cray-gpu-6.2.4.lua << 'EOF'
 help([[
-hipfort cray gpu 5.3.0
+hipfort cray gpu 6.2.4
 ]])
 
 prereq('PrgEnv-cray', 'rocm')
 
-local scratch_cray_gpu = os.getenv('SCRATCH_CRAY_GPU')
-local hipfort_folder = scratch_cray_gpu .. '/hipfort-5.3.0'
+local scratch = os.getenv('SCRATCH')
+local hipfort_folder = scratch .. '/opt/hipfort/hipfort-rocm-6.2.4'
 
 prepend_path('PATH', hipfort_folder .. '/bin')
 prepend_path('CPATH', hipfort_folder .. '/include')
@@ -233,28 +230,28 @@ prepend_path('LIBRARY_PATH', hipfort_folder .. '/lib')
 prepend_path('LD_LIBRARY_PATH', hipfort_folder .. '/lib')
 pushenv('HIPFORT_ROOT', hipfort_folder)
 EOF
-module load hipfort-cray-gpu/5.3.0 
-cd ../
+module load hipfort/cray-gpu-6.2.4 
+cd ../../
 
 # bgw
-gh repo clone BerkeleyGW
-mv BerkeleyGW BerkeleyGW-cray-gpu-4.0.0
-cd ./BerkeleyGW-cray-gpu-4.0.0
-mkdir -p $SCRATCH_CRAY_GPU/bgw-4.0.0
-mkdir -p $SCRATCH/modulefiles/bgw-cray-gpu
-touch $SCRATCH/modulefiles/bgw-cray-gpu/4.0.0.lua
-cp ../docker_fp/frontier/bgw_cray_gpu_arch.mk ./arch.mk
+cd ./bgw
+gh repo clone BerkeleyGW/BerkeleyGW
+mv BerkeleyGW bgw-cray-gpu-4.0.0
+cd ./bgw-cray-gpu-4.0.0
+mkdir -p $SCRATCH/opt/modulefiles/bgw
+touch $SCRATCH/opt/modulefiles/bgw/cray-gpu-4.0.0.lua
+cp ../../docker_fp/frontier/bgw_cray_gpu_arch.mk ./arch.mk
 make all-flavors -j16
-make install INSTDIR=$SCRATCH_CRAY_GPU/bgw-4.0.0
-cat > $SCRATCH/modulefiles/bgw-cray-gpu/4.0.0.lua << 'EOF'
+# make install INSTDIR=$(pwd)
+cat > $SCRATCH/opt/modulefiles/bgw-cray-gpu-4.0.0.lua << 'EOF'
 help([[
 bgw cray gpu 4.0.0
 ]])
 
 prereq('PrgEnv-cray', 'cray-hdf5-parallel', 'cray-fftw', 'cray-libsci')
 
-local scratch_cray_gpu = os.getenv('SCRATCH_CRAY_GPU')
-local bgw_folder = scratch_cray_gpu .. '/bgw-4.0.0'
+local scratch = os.getenv('SCRATCH')
+local bgw_folder = scratch .. '/opt/bgw/bgw-cray-gpu-4.0.0'
 
 prepend_path('PATH', bgw_folder .. '/bin') 
 prepend_path('CPATH', bgw_folder .. '/include') 
@@ -262,7 +259,8 @@ prepend_path('LIBRARY_PATH', bgw_folder .. '/lib')
 prepend_path('LD_LIBRARY_PATH', bgw_folder .. '/lib') 
 pushenv('BGW_ROOT', bgw_folder)
 EOF
-module load bgw-cray-gpu/4.0.0
+module load bgw/cray-gpu-4.0.0
+cd ../../
 
 # python packages: numpy, pandas, scipy, sympy, matplotlib, seaborn,
 # - torch, torchvision, torchaudio, tensorboard, datasets, transformers, diffusers, 

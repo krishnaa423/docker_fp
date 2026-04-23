@@ -31,18 +31,19 @@ fi
 # module loads. 
 
 # cray_cpu.
-module load cpu-env/cray-1.0.0
-# module load cpu-env/cray-2.0.0
-conda activate cray_cpu
+# module load cpu-env/cray-1.0.0
+# # module load cpu-env/cray-2.0.0
+# 
 
-# cray_gpu. 
-# gpu-env
+# cray_gpu
+module load gpu-env/cray-1.0.0
 # petsc
 # slepc
 # libxc
 # qe
+# hipfort
 # bgw
-# cray_gpu conda 
+conda activate cray_cpu
 
 
 
